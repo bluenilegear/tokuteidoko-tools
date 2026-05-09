@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>撮影ツール</title>
+<style>
+:root {
+  --bg: #f5f5f0;
+  --surface: #ffffff;
+  --surface2: #f0f0eb;
+  --border: #d8d8d0;
+  --accent: #1a6fbf;
+  --green: #2d7a3a;
+  --green-light: #e8f5eb;
+  --red: #b02020;
+  --red-light: #fde8e8;
+  --text: #1a1a18;
+  --text-dim: #5a5a55;
+  --text-muted: #9a9a95;
+  --radius: 10px;
+  --radius-sm: 7px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Helvetica Neue','Hiragino Kaku Gothic ProN',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+.header {
+  background: var(--accent); color: #fff;
+  padding: 12px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-title { font-size: 16px; font-weight: 700; }
+.header-right { display: flex; align-items: center; gap: 8px; }
+.site-chip { background: rgba(255,255,255,0.2); border: none; color: #fff; border-radius: 14px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
+.count-badge { background: rgba(255,255,255,0.25); border-radius: 12px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
+
+.setup-screen { position: fixed; inset: 0; background: var(--bg); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.setup-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 400px; }
+.setup-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.setup-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.6; }
+label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 5px; font-weight: 500; }
+input[type=text], input[type=number] { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 16px; padding: 12px 14px; outline: none; font-family: inherit; -webkit-appearance: none; }
+input:focus { border-color: var(--accent); background: #fff; }
+.fg { margin-bottom: 14px; }
+.btn-ok { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px; font-family: inherit; }
+.btn-cancel { width: 100%; background: none; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: 14px; cursor: pointer; margin-top: 6px; font-family: inherit; }
+
+.main { padding: 14px; max-width: 600px; margin: 0 auto; padding-bottom: 110px; }
+
+.shutter-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; text-align: center; }
+.next-filename { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
+.next-filename strong { color: var(--accent); font-size: 16px; display: block; margin-top: 4px; }
+.shutter-btn { width: 80px; height: 80px; border-radius: 50%; background: var(--accent); border: 4px solid #fff; box-shadow: 0 0 0 2px var(--accent); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 32px; transition: transform 0.1s; }
+.shutter-btn:active { transform: scale(0.92); }
+.camera-input { display: none; }
+.hint-text { font-size: 12px; color: var(--text-muted); margin-top: 12px; line-height: 1.6; }
+
+/* 保存手順ボックス */
+.how-to-save {
+  background: #fffbe6; border: 1px solid #e0c060;
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  font-size: 12px; color: #7a5c00; line-height: 1.8;
+  margin-bottom: 14px;
+}
+.how-to-save strong { display: block; font-size: 13px; margin-bottom: 4px; color: #5a3c00; }
+
+.list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.list-title { font-size: 13px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.btn-clear-all { background: var(--red-light); color: var(--red); border: 1px solid #e8b0b0; border-radius: var(--radius-sm); padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+
+.empty-list { text-align: center; color: var(--text-muted); padding: 28px 0; font-size: 14px; line-height: 1.9; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.photo-list { display: flex; flex-direction: column; gap: 8px; }
+
+.photo-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); display: flex; align-items: stretch; overflow: hidden; }
+.photo-row.saved { border-color: #a0d4ac; background: var(--green-light); }
+.photo-thumb { width: 88px; min-width: 88px; cursor: pointer; }
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-info { flex: 1; padding: 10px 12px; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.photo-name { font-size: 13px; font-weight: 700; color: var(--text); word-break: break-all; }
+.photo-status { font-size: 11px; color: var(--text-muted); }
+.photo-status.ok { color: var(--green); font-weight: 600; }
+.photo-actions { display: flex; flex-direction: column; min-width: 72px; }
+.btn-open-tab {
+  flex: 1; background: var(--accent); color: #fff; border: none;
+  border-left: 1px solid var(--border);
+  font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
+  padding: 0 8px; white-space: nowrap; line-height: 1.3; text-align: center;
+}
+.btn-open-tab.done { background: var(--green); }
+.btn-del-one { height: 36px; background: var(--red-light); color: var(--red); border: none; border-left: 1px solid var(--border); border-top: 1px solid var(--border); font-size: 15px; cursor: pointer; }
+
+.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 14px; z-index: 100; }
+.bottom-info { font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 6px; }
+.bottom-info strong { color: var(--accent); }
+.progress-row { display: flex; align-items: center; gap: 10px; }
+.progress-bg { flex: 1; background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; }
+.progress-fill { background: var(--green); height: 100%; border-radius: 4px; transition: width 0.3s; }
+.progress-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+.toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: var(--green); color: #fff; padding: 9px 22px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; }
+
+.fullscreen-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 300; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+.fullscreen-overlay.open { display: flex; }
+.fullscreen-img { max-width: 100%; max-height: 75vh; border-radius: 8px; object-fit: contain; }
+.fullscreen-name { color: #fff; font-size: 14px; margin-top: 12px; font-weight: 600; }
+.fullscreen-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.2); border: none; color: #fff; border-radius: 50%; width: 36px; height: 36px; font-size: 20px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="fullscreen-overlay" id="fsOverlay" onclick="closeFs()">
+  <button class="fullscreen-close">×</button>
+  <img class="fullscreen-img" id="fsImg" src="" alt="">
+  <div class="fullscreen-name" id="fsName"></div>
+</div>
+
+<div class="setup-screen" id="setupScreen">
+  <div class="setup-box">
+    <div class="setup-title">📷 撮影ツール</div>
+    <div class="setup-sub">現場名を設定します。写真のファイル名は<br>「現場名_001」「現場名_002」…となります。</div>
+    <div class="fg"><label>現場名（例：落石066）</label><input type="text" id="s_name" placeholder="落石066" autocomplete="off"></div>
+    <div class="fg"><label>開始番号（通常は1）</label><input type="number" id="s_start" value="1" min="1" max="999"></div>
+    <button class="btn-ok" onclick="startSession()">✓ 撮影を開始</button>
+    <button class="btn-cancel" id="cancelBtn" onclick="closeSetup()" style="display:none">キャンセル</button>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-title">📷 撮影ツール</div>
+  <div class="header-right">
+    <div class="count-badge" id="countBadge">0枚</div>
+    <button class="site-chip" onclick="openSetup()">⚙ <span id="headerSite">未設定</span></button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="shutter-card">
+    <div class="next-filename">次の写真のファイル名：<strong id="nextFilename">—</strong></div>
+    <div class="shutter-btn" onclick="triggerCamera()">📷</div>
+    <input type="file" accept="image/*" capture="environment" id="cameraInput" class="camera-input" onchange="onPhotoTaken(event)">
+    <div class="hint-text">ボタンをタップしてカメラを起動<br>撮影後に一覧で確認・保存できます</div>
+  </div>
+
+  <div class="how-to-save">
+    <strong>📥 写真の保存方法</strong>
+    ① 下の一覧の「新規タブで開く」をタップ<br>
+    ② 写真が新しいタブで大きく表示される<br>
+    ③ 写真を長押し →「"落石066_001.jpg"をダウンロード」を選択<br>
+    ④ Edgeのダウンロードフォルダにファイル名付きで保存される
+  </div>
+
+  <div>
+    <div class="list-header">
+      <div class="list-title">撮影済み写真</div>
+      <button class="btn-clear-all" onclick="clearAll()" id="clearAllBtn" style="display:none">🗑 全て削除</button>
+    </div>
+    <div id="emptyList" class="empty-list">まだ写真がありません。<br>上のボタンで撮影してください。</div>
+    <div class="photo-list" id="photoList"></div>
+  </div>
+
+</div>
+
+<div class="bottom-bar">
+  <div class="bottom-info" id="bottomInfo">現場名を設定してから撮影してください</div>
+  <div class="progress-row" id="progressRow" style="display:none">
+    <div class="progress-bg"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-label" id="progressLabel">0 / 0 枚保存済み</div>
+  </div>
+</div>
+
+<script>
+let siteName = '';
+let counter = 1;
+let photos = [];
+
+window.onload = () => { document.getElementById('setupScreen').style.display = 'flex'; };
+
+function startSession() {
+  const name = document.getElementById('s_name').value.trim();
+  if (!name) { alert('現場名を入力してください'); return; }
+  siteName = name;
+  counter = parseInt(document.getElementById('s_start').value) || 1;
+  document.getElementById('headerSite').textContent = name;
+  updateNextFilename();
+  updateFooter();
+  closeSetup();
+}
+function openSetup() {
+  document.getElementById('s_name').value = siteName;
+  document.getElementById('s_start').value = counter;
+  document.getElementById('cancelBtn').style.display = siteName ? 'block' : 'none';
+  document.getElementById('setupScreen').style.display = 'flex';
+}
+function closeSetup() { document.getElementById('setupScreen').style.display = 'none'; }
+
+function updateNextFilename() {
+  document.getElementById('nextFilename').textContent = siteName
+    ? siteName + '_' + String(counter).padStart(3,'0') + '.jpg' : '—';
+}
+
+function updateFooter() {
+  const saved = photos.filter(p => p.saved).length;
+  const total = photos.length;
+  document.getElementById('countBadge').textContent = total + '枚';
+  document.getElementById('clearAllBtn').style.display = total > 0 ? 'inline-block' : 'none';
+  if (!siteName) {
+    document.getElementById('bottomInfo').innerHTML = '現場名を設定してから撮影してください';
+    document.getElementById('progressRow').style.display = 'none';
+    return;
+  }
+  document.getElementById('bottomInfo').innerHTML = `<strong>${siteName}</strong> ／ ${total}枚撮影済み`;
+  if (total > 0) {
+    document.getElementById('progressRow').style.display = 'flex';
+    document.getElementById('progressFill').style.width = Math.round(saved/total*100) + '%';
+    document.getElementById('progressLabel').textContent = saved + ' / ' + total + ' 枚タブで開いた';
+  } else {
+    document.getElementById('progressRow').style.display = 'none';
+  }
+}
+
+function triggerCamera() {
+  if (!siteName) { alert('先に現場名を設定してください（右上の⚙ボタン）'); return; }
+  document.getElementById('cameraInput').click();
+}
+
+function onPhotoTaken(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const filename = siteName + '_' + String(counter).padStart(3,'0');
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const idx = photos.length;
+    photos.push({ filename, dataUrl: ev.target.result, saved: false });
+    counter++;
+    appendRow(idx);
+    updateNextFilename();
+    updateFooter();
+    showToast('📷 ' + filename + ' を撮影しました');
+    setTimeout(() => {
+      document.getElementById('row_'+idx).scrollIntoView({behavior:'smooth',block:'nearest'});
+    }, 200);
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+function appendRow(idx) {
+  document.getElementById('emptyList').style.display = 'none';
+  const p = photos[idx];
+  const div = document.createElement('div');
+  div.className = 'photo-row';
+  div.id = 'row_' + idx;
+  div.innerHTML =
+    `<div class="photo-thumb" onclick="openFs(${idx})"><img src="${p.dataUrl}" alt="${p.filename}"></div>
+     <div class="photo-info">
+       <div class="photo-name">${p.filename}.jpg</div>
+       <div class="photo-status" id="st_${idx}">未保存</div>
+     </div>
+     <div class="photo-actions">
+       <button class="btn-open-tab" id="sb_${idx}" onclick="openInNewTab(${idx})">新規タブ<br>で開く</button>
+       <button class="btn-del-one" onclick="deletePhoto(${idx})">🗑</button>
+     </div>`;
+  document.getElementById('photoList').appendChild(div);
+}
+
+function rebuildList() {
+  document.getElementById('photoList').innerHTML = '';
+  if (photos.length === 0) { document.getElementById('emptyList').style.display = 'block'; return; }
+  document.getElementById('emptyList').style.display = 'none';
+  photos.forEach((p, idx) => {
+    appendRow(idx);
+    if (p.saved) markSaved(idx);
+  });
+}
+
+// 新規タブで開く → 長押しでダウンロード可能に
+function openInNewTab(idx) {
+  const p = photos[idx];
+  // dataURLを含むHTMLページを新規タブで開く
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>${p.filename}.jpg</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{margin:0;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;}
+img{max-width:100vw;max-height:85vh;object-fit:contain;}
+p{color:#fff;font-family:sans-serif;font-size:14px;margin-top:12px;text-align:center;line-height:1.8;opacity:0.85;}
+strong{color:#7dd3fc;}
+</style></head>
+<body>
+<img src="${p.dataUrl}" alt="${p.filename}">
+<p>この写真を長押し（または右クリック）<br>→ <strong>「${p.filename}.jpg」をダウンロード</strong> を選択</p>
+</body></html>`;
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  // 保存済みマーク
+  p.saved = true;
+  markSaved(idx);
+  updateFooter();
+}
+
+function markSaved(idx) {
+  const row = document.getElementById('row_' + idx);
+  const btn = document.getElementById('sb_' + idx);
+  const st = document.getElementById('st_' + idx);
+  if (row) row.classList.add('saved');
+  if (btn) { btn.textContent = '✓ 開いた'; btn.classList.add('done'); }
+  if (st) { st.textContent = '✓ タブで開いた'; st.className = 'photo-status ok'; }
+}
+
+function deletePhoto(idx) {
+  if (!confirm('「' + photos[idx].filename + '」を削除しますか？')) return;
+  photos.splice(idx, 1);
+  rebuildList();
+  updateFooter();
+  showToast('削除しました');
+}
+
+function clearAll() {
+  if (!confirm('撮影した写真を全て削除しますか？')) return;
+  photos = [];
+  rebuildList();
+  updateFooter();
+  showToast('全て削除しました');
+}
+
+function openFs(idx) {
+  const p = photos[idx];
+  document.getElementById('fsImg').src = p.dataUrl;
+  document.getElementById('fsName').textContent = p.filename + '.jpg';
+  document.getElementById('fsOverlay').classList.add('open');
+}
+function closeFs() { document.getElementById('fsOverlay').classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+</script>
+</body>
+</html>
