@@ -56,14 +56,13 @@ input:focus { border-color: var(--accent); background: #fff; }
 .camera-input { display: none; }
 .hint-text { font-size: 12px; color: var(--text-muted); margin-top: 12px; line-height: 1.6; }
 
-/* 保存手順ボックス */
-.how-to-save {
-  background: #fffbe6; border: 1px solid #e0c060;
-  border-radius: var(--radius-sm); padding: 12px 14px;
-  font-size: 12px; color: #7a5c00; line-height: 1.8;
-  margin-bottom: 14px;
+.save-notice {
+  background: var(--green-light); border: 1px solid #a0d4ac;
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  font-size: 13px; color: var(--green); font-weight: 600;
+  margin-bottom: 14px; text-align: center; min-height: 20px;
+  display: none;
 }
-.how-to-save strong { display: block; font-size: 13px; margin-bottom: 4px; color: #5a3c00; }
 
 .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .list-title { font-size: 13px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -81,13 +80,8 @@ input:focus { border-color: var(--accent); background: #fff; }
 .photo-status { font-size: 11px; color: var(--text-muted); }
 .photo-status.ok { color: var(--green); font-weight: 600; }
 .photo-actions { display: flex; flex-direction: column; min-width: 72px; }
-.btn-open-tab {
-  flex: 1; background: var(--accent); color: #fff; border: none;
-  border-left: 1px solid var(--border);
-  font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit;
-  padding: 0 8px; white-space: nowrap; line-height: 1.3; text-align: center;
-}
-.btn-open-tab.done { background: var(--green); }
+.btn-save-one { flex: 1; background: var(--accent); color: #fff; border: none; border-left: 1px solid var(--border); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 8px; white-space: nowrap; line-height: 1.3; text-align: center; }
+.btn-save-one.done { background: var(--green); cursor: default; }
 .btn-del-one { height: 36px; background: var(--red-light); color: var(--red); border: none; border-left: 1px solid var(--border); border-top: 1px solid var(--border); font-size: 15px; cursor: pointer; }
 
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 14px; z-index: 100; }
@@ -143,16 +137,10 @@ input:focus { border-color: var(--accent); background: #fff; }
     <div class="next-filename">次の写真のファイル名：<strong id="nextFilename">—</strong></div>
     <div class="shutter-btn" onclick="triggerCamera()">📷</div>
     <input type="file" accept="image/*" capture="environment" id="cameraInput" class="camera-input" onchange="onPhotoTaken(event)">
-    <div class="hint-text">ボタンをタップしてカメラを起動<br>撮影後に一覧で確認・保存できます</div>
+    <div class="hint-text">ボタンをタップしてカメラを起動<br>撮影するとすぐに自動でダウンロードフォルダに保存されます</div>
   </div>
 
-  <div class="how-to-save">
-    <strong>📥 写真の保存方法</strong>
-    ① 下の一覧の「新規タブで開く」をタップ<br>
-    ② 写真が新しいタブで大きく表示される<br>
-    ③ 写真を長押し →「"落石066_001.jpg"をダウンロード」を選択<br>
-    ④ Edgeのダウンロードフォルダにファイル名付きで保存される
-  </div>
+  <div class="save-notice" id="saveNotice"></div>
 
   <div>
     <div class="list-header">
@@ -176,7 +164,8 @@ input:focus { border-color: var(--accent); background: #fff; }
 <script>
 let siteName = '';
 let counter = 1;
-let photos = [];
+let photos = []; // {filename, dataUrl, saved}
+let noticeTimer = null;
 
 window.onload = () => { document.getElementById('setupScreen').style.display = 'flex'; };
 
@@ -217,7 +206,7 @@ function updateFooter() {
   if (total > 0) {
     document.getElementById('progressRow').style.display = 'flex';
     document.getElementById('progressFill').style.width = Math.round(saved/total*100) + '%';
-    document.getElementById('progressLabel').textContent = saved + ' / ' + total + ' 枚タブで開いた';
+    document.getElementById('progressLabel').textContent = saved + ' / ' + total + ' 枚保存済み';
   } else {
     document.getElementById('progressRow').style.display = 'none';
   }
@@ -232,102 +221,83 @@ function onPhotoTaken(e) {
   const file = e.target.files[0];
   if (!file) return;
   const filename = siteName + '_' + String(counter).padStart(3,'0');
+  const fn = filename + '.jpg';
+
+  // ★ポイント：new File()でファイル名を指定してからダウンロード
+  const renamedFile = new File([file], fn, { type: 'image/jpeg' });
+  const url = URL.createObjectURL(renamedFile);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fn;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+  // サムネイル用にdataURLも作成
   const reader = new FileReader();
   reader.onload = ev => {
     const idx = photos.length;
-    photos.push({ filename, dataUrl: ev.target.result, saved: false });
+    photos.push({ filename, dataUrl: ev.target.result, saved: true });
     counter++;
     appendRow(idx);
     updateNextFilename();
     updateFooter();
-    showToast('📷 ' + filename + ' を撮影しました');
-    setTimeout(() => {
-      document.getElementById('row_'+idx).scrollIntoView({behavior:'smooth',block:'nearest'});
-    }, 200);
+    showSaveNotice(fn);
   };
   reader.readAsDataURL(file);
   e.target.value = '';
+}
+
+function showSaveNotice(fn) {
+  const el = document.getElementById('saveNotice');
+  el.textContent = '✓ ' + fn + ' をダウンロードフォルダに保存しました';
+  el.style.display = 'block';
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
 function appendRow(idx) {
   document.getElementById('emptyList').style.display = 'none';
   const p = photos[idx];
   const div = document.createElement('div');
-  div.className = 'photo-row';
+  div.className = 'photo-row saved';
   div.id = 'row_' + idx;
   div.innerHTML =
     `<div class="photo-thumb" onclick="openFs(${idx})"><img src="${p.dataUrl}" alt="${p.filename}"></div>
      <div class="photo-info">
        <div class="photo-name">${p.filename}.jpg</div>
-       <div class="photo-status" id="st_${idx}">未保存</div>
+       <div class="photo-status ok">✓ 保存済み</div>
      </div>
      <div class="photo-actions">
-       <button class="btn-open-tab" id="sb_${idx}" onclick="openInNewTab(${idx})">新規タブ<br>で開く</button>
+       <button class="btn-save-one done" style="font-size:11px">✓ 保存済</button>
        <button class="btn-del-one" onclick="deletePhoto(${idx})">🗑</button>
      </div>`;
   document.getElementById('photoList').appendChild(div);
+  setTimeout(() => {
+    div.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }, 200);
 }
 
 function rebuildList() {
   document.getElementById('photoList').innerHTML = '';
   if (photos.length === 0) { document.getElementById('emptyList').style.display = 'block'; return; }
   document.getElementById('emptyList').style.display = 'none';
-  photos.forEach((p, idx) => {
-    appendRow(idx);
-    if (p.saved) markSaved(idx);
-  });
-}
-
-// 新規タブで開く → 長押しでダウンロード可能に
-function openInNewTab(idx) {
-  const p = photos[idx];
-  // dataURLを含むHTMLページを新規タブで開く
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
-<title>${p.filename}.jpg</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-body{margin:0;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;}
-img{max-width:100vw;max-height:85vh;object-fit:contain;}
-p{color:#fff;font-family:sans-serif;font-size:14px;margin-top:12px;text-align:center;line-height:1.8;opacity:0.85;}
-strong{color:#7dd3fc;}
-</style></head>
-<body>
-<img src="${p.dataUrl}" alt="${p.filename}">
-<p>この写真を長押し（または右クリック）<br>→ <strong>「${p.filename}.jpg」をダウンロード</strong> を選択</p>
-</body></html>`;
-  const blob = new Blob([html], {type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
-  // 保存済みマーク
-  p.saved = true;
-  markSaved(idx);
-  updateFooter();
-}
-
-function markSaved(idx) {
-  const row = document.getElementById('row_' + idx);
-  const btn = document.getElementById('sb_' + idx);
-  const st = document.getElementById('st_' + idx);
-  if (row) row.classList.add('saved');
-  if (btn) { btn.textContent = '✓ 開いた'; btn.classList.add('done'); }
-  if (st) { st.textContent = '✓ タブで開いた'; st.className = 'photo-status ok'; }
+  photos.forEach((p, idx) => appendRow(idx));
 }
 
 function deletePhoto(idx) {
-  if (!confirm('「' + photos[idx].filename + '」を削除しますか？')) return;
+  if (!confirm('「' + photos[idx].filename + '」を一覧から削除しますか？\n（ダウンロード済みのファイルは残ります）')) return;
   photos.splice(idx, 1);
   rebuildList();
   updateFooter();
-  showToast('削除しました');
 }
 
 function clearAll() {
-  if (!confirm('撮影した写真を全て削除しますか？')) return;
+  if (!confirm('撮影一覧を全て削除しますか？\n（ダウンロード済みのファイルは残ります）')) return;
   photos = [];
   rebuildList();
   updateFooter();
-  showToast('全て削除しました');
 }
 
 function openFs(idx) {
