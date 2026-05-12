@@ -24,12 +24,44 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { font-family: 'Helvetica Neue','Hiragino Kaku Gothic ProN',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-.header { background: var(--accent); color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-.header-title { font-size: 16px; font-weight: 700; }
+/* ===== ヘッダー（シャッターバー含む・常に固定） ===== */
+.header {
+  background: var(--accent); color: #fff;
+  padding: 10px 14px 12px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.header-title { font-size: 15px; font-weight: 700; }
 .header-right { display: flex; align-items: center; gap: 8px; }
 .site-chip { background: rgba(255,255,255,0.2); border: none; color: #fff; border-radius: 14px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: inherit; }
 .count-badge { background: rgba(255,255,255,0.25); border-radius: 12px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
 
+/* シャッターバー：左にファイル名、右にボタン */
+.shutter-bar {
+  display: flex; align-items: center; gap: 14px;
+}
+.next-filename-inline {
+  flex: 1;
+  font-size: 12px; color: rgba(255,255,255,0.8); line-height: 1.5;
+}
+.next-filename-inline strong {
+  color: #fff; font-size: 15px; display: block; margin-top: 2px; font-weight: 800;
+}
+.shutter-btn {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #fff; border: 3px solid rgba(255,255,255,0.4);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 28px;
+  transition: transform 0.1s; flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.shutter-btn:active { transform: scale(0.91); }
+.camera-input { display: none; }
+
+/* ===== セットアップ画面 ===== */
 .setup-screen { position: fixed; inset: 0; background: var(--bg); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .setup-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 400px; }
 .setup-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
@@ -41,17 +73,12 @@ input:focus { border-color: var(--accent); background: #fff; }
 .btn-ok { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px; font-family: inherit; }
 .btn-cancel { width: 100%; background: none; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-size: 14px; cursor: pointer; margin-top: 6px; font-family: inherit; }
 
-.main { padding: 14px; max-width: 600px; margin: 0 auto; padding-bottom: 110px; }
+/* ===== メインコンテンツ ===== */
+.main { padding: 12px 14px; max-width: 600px; margin: 0 auto; padding-bottom: 100px; }
 
-.shutter-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; text-align: center; }
-.next-filename { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6; }
-.next-filename strong { color: var(--accent); font-size: 16px; display: block; margin-top: 4px; }
-.shutter-btn { width: 80px; height: 80px; border-radius: 50%; background: var(--accent); border: 4px solid #fff; box-shadow: 0 0 0 2px var(--accent); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 32px; transition: transform 0.1s; }
-.shutter-btn:active { transform: scale(0.92); }
-.camera-input { display: none; }
-.hint-text { font-size: 12px; color: var(--text-muted); margin-top: 12px; line-height: 1.8; }
+.save-notice { background: var(--green-light); border: 1px solid #a0d4ac; border-radius: var(--radius-sm); padding: 9px 14px; font-size: 13px; color: var(--green); font-weight: 600; margin-bottom: 12px; text-align: center; display: none; }
 
-.save-notice { background: var(--green-light); border: 1px solid #a0d4ac; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--green); font-weight: 600; margin-bottom: 14px; text-align: center; display: none; }
+.hint-text { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.8; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; }
 
 .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .list-title { font-size: 13px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
@@ -70,8 +97,9 @@ input:focus { border-color: var(--accent); background: #fff; }
 .photo-status.ok { color: var(--green); font-weight: 600; }
 .photo-actions { display: flex; flex-direction: column; min-width: 72px; }
 .btn-redownload { flex: 1; background: var(--accent); color: #fff; border: none; border-left: 1px solid var(--border); font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; padding: 0 6px; line-height: 1.3; text-align: center; }
-.btn-del-one { height: 36px; background: var(--red-light); color: var(--red); border: none; border-left: 1px solid var(--border); border-top: 1px solid var(--border); font-size: 15px; cursor: pointer; }
+.btn-del-one { height: 36px; background: var(--red-light); color: var(--red); border: none; border-left: 1px solid var(--border); border-top: 1px solid var(--border); font-size: 15px; cursor: pointer; width: 100%; }
 
+/* ===== ボトムバー ===== */
 .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 14px; z-index: 100; }
 .bottom-info { font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 6px; }
 .bottom-info strong { color: var(--accent); }
@@ -80,7 +108,7 @@ input:focus { border-color: var(--accent); background: #fff; }
 .progress-fill { background: var(--green); height: 100%; border-radius: 4px; transition: width 0.3s; }
 .progress-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
-.toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: var(--green); color: #fff; padding: 9px 22px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 999; white-space: nowrap; }
+.toast { position: fixed; top: 140px; left: 50%; transform: translateX(-50%); background: var(--green); color: #fff; padding: 9px 22px; border-radius: 20px; font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 999; white-space: nowrap; }
 .toast.show { opacity: 1; }
 
 .fullscreen-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 300; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
@@ -111,36 +139,39 @@ input:focus { border-color: var(--accent); background: #fff; }
   </div>
 </div>
 
+<!-- ヘッダー＋シャッターバー（固定） -->
 <div class="header">
-  <div class="header-title">📷 撮影ツール</div>
-  <div class="header-right">
-    <div class="count-badge" id="countBadge">0枚</div>
-    <button class="site-chip" onclick="openSetup()">⚙ <span id="headerSite">未設定</span></button>
+  <div class="header-top">
+    <div class="header-title">📷 撮影ツール</div>
+    <div class="header-right">
+      <div class="count-badge" id="countBadge">0枚</div>
+      <button class="site-chip" onclick="openSetup()">⚙ <span id="headerSite">未設定</span></button>
+    </div>
+  </div>
+  <div class="shutter-bar">
+    <div class="next-filename-inline">
+      次のファイル名：
+      <strong id="nextFilename">—</strong>
+    </div>
+    <div class="shutter-btn" onclick="triggerCamera()">📷</div>
+    <input type="file" accept="image/*" capture="environment" id="cameraInput" class="camera-input" onchange="onPhotoTaken(event)">
   </div>
 </div>
 
 <div class="main">
 
-  <div class="shutter-card">
-    <div class="next-filename">次の写真のファイル名：<strong id="nextFilename">—</strong></div>
-    <div class="shutter-btn" onclick="triggerCamera()">📷</div>
-    <input type="file" accept="image/*" capture="environment" id="cameraInput" class="camera-input" onchange="onPhotoTaken(event)">
-    <div class="hint-text">
-      ① ボタンをタップ → カメラ起動<br>
-      ② 撮影 → 「写真を使用」<br>
-      ③ ダウンロード確認が出たら保存<br>
-      ④ ツール内に自動でサムネイル表示
-    </div>
-  </div>
-
   <div class="save-notice" id="saveNotice"></div>
+
+  <div class="hint-text">
+    ① 右上の📷をタップ → カメラ起動　② 撮影 → 「写真を使用」　③ ダウンロード確認で保存
+  </div>
 
   <div>
     <div class="list-header">
       <div class="list-title">撮影済み写真</div>
       <button class="btn-clear-all" onclick="clearAll()" id="clearAllBtn" style="display:none">🗑 一覧を削除</button>
     </div>
-    <div id="emptyList" class="empty-list">まだ写真がありません。<br>上のボタンで撮影してください。</div>
+    <div id="emptyList" class="empty-list">まだ写真がありません。<br>上の📷ボタンで撮影してください。</div>
     <div class="photo-list" id="photoList"></div>
   </div>
 
@@ -157,7 +188,7 @@ input:focus { border-color: var(--accent); background: #fff; }
 <script>
 let siteName = '';
 let counter = 1;
-let photos = []; // {filename, dataUrl}
+let photos = [];
 let noticeTimer = null;
 
 window.onload = () => { document.getElementById('setupScreen').style.display = 'flex'; };
@@ -212,11 +243,8 @@ function triggerCamera() {
 function onPhotoTaken(e) {
   const file = e.target.files[0];
   if (!file) return;
-
   const filename = siteName + '_' + String(counter).padStart(3,'0');
   const fn = filename + '.jpg';
-
-  // まずdataURLを読み込んでサムネイルを作成してから、ダウンロードを実行
   const reader = new FileReader();
   reader.onload = ev => {
     const dataUrl = ev.target.result;
@@ -226,20 +254,13 @@ function onPhotoTaken(e) {
     appendRow(idx);
     updateNextFilename();
     updateFooter();
-
-    // ダウンロード実行（new File()でファイル名を指定）
     const renamedFile = new File([file], fn, { type: 'image/jpeg' });
     const url = URL.createObjectURL(renamedFile);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = fn;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.href = url; a.download = fn;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-
     showSaveNotice(fn);
-
     setTimeout(() => {
       document.getElementById('row_' + idx).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 200);
@@ -275,22 +296,18 @@ function appendRow(idx) {
   document.getElementById('photoList').appendChild(div);
 }
 
-// 万が一保存できていなかったときのための再保存ボタン
 function redownload(idx) {
   const p = photos[idx];
   const fn = p.filename + '.jpg';
-  fetch(p.dataUrl)
-    .then(r => r.blob())
-    .then(blob => {
-      const renamedFile = new File([blob], fn, { type: 'image/jpeg' });
-      const url = URL.createObjectURL(renamedFile);
-      const a = document.createElement('a');
-      a.href = url; a.download = fn;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      showSaveNotice(fn);
-    });
+  fetch(p.dataUrl).then(r => r.blob()).then(blob => {
+    const renamedFile = new File([blob], fn, { type: 'image/jpeg' });
+    const url = URL.createObjectURL(renamedFile);
+    const a = document.createElement('a');
+    a.href = url; a.download = fn;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    showSaveNotice(fn);
+  });
 }
 
 function rebuildList() {
