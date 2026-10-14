@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="特定土工">
+<title>特定土工</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f0f0; }
+
+  /* ===== ホーム画面 ===== */
+  #home-screen { display: block; }
+  .home-header {
+    background: #1a5c9a;
+    color: white;
+    padding: 16px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+  .search-box {
+    background: white;
+    padding: 10px 12px;
+    border-bottom: 1px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #f8f8f8;
+  }
+  .kanai-group { margin-bottom: 2px; }
+  .kanai-header {
+    background: #2c7bb6;
+    color: white;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .site-item {
+    background: white;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    active-background: #e8f0fa;
+  }
+  .site-item:active { background: #e8f0fa; }
+  .site-no {
+    background: #1a5c9a;
+    color: white;
+    border-radius: 4px;
+    padding: 3px 7px;
+    font-size: 12px;
+    font-weight: bold;
+    min-width: 50px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .site-no.shinki { background: #e67e22; }
+  .site-name-wrap { flex: 1; }
+  .site-name { font-size: 15px; color: #222; }
+  .site-kp { font-size: 12px; color: #888; margin-top: 2px; }
+  .site-arrow { color: #aaa; font-size: 18px; }
+
+  /* ===== 箇所詳細・撮影画面 ===== */
+  #shoot-screen { display: none; }
+  .shoot-header {
+    background: #1a5c9a;
+    color: white;
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .shoot-header-top {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    gap: 10px;
+  }
+  .back-btn {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .shoot-title {
+    flex: 1;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+  }
+  .shoot-kanai {
+    font-size: 12px;
+    font-weight: normal;
+    opacity: 0.8;
+  }
+
+  /* 箇所情報パネル */
+  .site-info-panel {
+    background: #e8f0fa;
+    border-bottom: 2px solid #1a5c9a;
+    padding: 10px 16px;
+  }
+  .info-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .info-label {
+    font-size: 11px;
+    color: #555;
+    font-weight: bold;
+    min-width: 46px;
+    flex-shrink: 0;
+  }
+  .info-value {
+    font-size: 14px;
+    color: #1a1a1a;
+    font-weight: 500;
+  }
+  .info-badge {
+    display: inline-block;
+    background: #1a5c9a;
+    color: white;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 11px;
+    margin-left: 6px;
+  }
+  .info-badge.shinki { background: #e67e22; }
+
+  /* 撮影本体 */
+  .shoot-body { padding: 12px; }
+
+  /* 新規モード */
+  .shinki-counter {
+    background: white;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .counter-num {
+    font-size: 64px;
+    font-weight: bold;
+    color: #e67e22;
+    line-height: 1;
+  }
+  .counter-label { font-size: 14px; color: #666; margin-top: 4px; }
+  .counter-filename {
+    font-size: 13px;
+    color: #1a5c9a;
+    margin-top: 6px;
+    font-family: monospace;
+    background: #f0f4fa;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .shoot-btn-big {
+    width: 100%;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 18px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .shoot-btn-big:active { background: #1e8449; }
+  .undo-btn {
+    width: 100%;
+    background: #95a5a6;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .undo-btn:active { background: #7f8c8d; }
+
+  /* 既存モード P番号 */
+  .p-section-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #555;
+    margin: 10px 0 6px;
+    padding-left: 2px;
+  }
+  .p-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .p-card {
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+  }
+  .p-card.done { background: #1a5c9a; border-color: #1a5c9a; color: white; }
+  .p-card.pano-done { background: #8e44ad; border-color: #8e44ad; color: white; }
+  .p-num { font-size: 16px; font-weight: bold; }
+  .p-type { font-size: 11px; margin-top: 2px; opacity: 0.8; }
+  .p-pano-btn {
+    font-size: 10px;
+    background: rgba(0,0,0,0.15);
+    border: none;
+    border-radius: 4px;
+    color: inherit;
+    padding: 2px 5px;
+    margin-top: 4px;
+    cursor: pointer;
+    display: none;
+  }
+  .p-card.done .p-pano-btn, .p-card.pano-done .p-pano-btn { display: inline-block; }
+
+  .add-p-btn {
+    width: 100%;
+    background: #ecf0f1;
+    border: 2px dashed #bdc3c7;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 14px;
+    color: #7f8c8d;
+    cursor: pointer;
+    margin-top: 6px;
+    margin-bottom: 10px;
+  }
+  .add-p-btn:active { background: #d5dbdb; }
+
+  /* 撮影ファイル名表示 */
+  .fn-toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.75);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-family: monospace;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .fn-toast.show { opacity: 1; }
+
+  /* 完了ボタン */
+  .complete-btn {
+    width: 100%;
+    background: #c0392b;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .complete-btn:active { background: #a93226; }
+
+  /* ローディング */
+  #loading-screen {
+    position: fixed; inset: 0;
+    background: #1a5c9a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: white; z-index: 9999;
+  }
+  .loading-title { font-size: 28px; font-weight: bold; letter-spacing: 3px; margin-bottom: 20px; }
+  .loading-sub { font-size: 14px; opacity: 0.8; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading-screen">
+  <div class="loading-title">特定土工</div>
+  <div class="spinner"></div>
+  <div class="loading-sub" id="loading-msg">箇所リストを読み込み中…</div>
+</div>
+
+<!-- ホーム画面 -->
+<div id="home-screen" style="display:none;">
+  <div class="home-header">特定土工</div>
+  <div class="search-box">
+    <input type="search" id="search-input" placeholder="箇所名・No.で絞り込み" oninput="filterSites()">
+  </div>
+  <div id="site-list"></div>
+</div>
+
+<!-- 撮影画面 -->
+<div id="shoot-screen" style="display:none;">
+  <div class="shoot-header">
+    <div class="shoot-header-top">
+      <button class="back-btn" onclick="goBack()">◀ 戻る</button>
+      <div class="shoot-title">
+        <div class="shoot-kanai" id="sh-kanai"></div>
+        <div id="sh-no-name"></div>
+      </div>
+    </div>
+    <!-- 箇所情報パネル -->
+    <div class="site-info-panel" id="site-info-panel"></div>
+  </div>
+  <div class="shoot-body" id="shoot-body"></div>
+</div>
+
+<!-- カメラ起動用 hidden input -->
+<input type="file" accept="image/*" capture="environment" id="camera-input" style="display:none">
+
+<!-- ファイル名トースト -->
+<div class="fn-toast" id="fn-toast"></div>
+
+<script>
+const JSON_URL = 'https://raw.githubusercontent.com/bluenilegear/tokuteidoko-tools/main/kasho-list.json';
+
+let allSites = [];
+let currentSite = null;
+let toastTimer = null;
+let pendingFilename = null;
+
+// カメラ input の onChange
+document.getElementById('camera-input').addEventListener('change', function(e) {
+  if (!e.target.files || e.target.files.length === 0) return;
+  // 撮影完了 → カウント進める
+  if (typeof window._onCameraShot === 'function') window._onCameraShot();
+  // inputをリセット（同じボタンを連続で押せるように）
+  e.target.value = '';
+});
+
+function openCamera(onShot) {
+  window._onCameraShot = onShot;
+  document.getElementById('camera-input').click();
+}
+
+// ===== 起動 =====
+async function init() {
+  try {
+    const res = await fetch(JSON_URL + '?_=' + Date.now());
+    const data = await res.json();
+    allSites = data.sites;
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('home-screen').style.display = 'block';
+    renderSiteList(allSites);
+  } catch(e) {
+    document.getElementById('loading-msg').textContent = '読み込み失敗。オフライン？';
+    // フォールバック: キャッシュ試行
+    try {
+      const res2 = await fetch(JSON_URL);
+      const data2 = await res2.json();
+      allSites = data2.sites;
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('home-screen').style.display = 'block';
+      renderSiteList(allSites);
+    } catch(e2) {
+      document.getElementById('loading-msg').textContent = 'ネットワークエラー。Wi-Fiを確認してください。';
+    }
+  }
+}
+
+// ===== サイトリスト描画 =====
+function renderSiteList(sites) {
+  const container = document.getElementById('site-list');
+  // 管内ごとにグループ化
+  const groups = {};
+  const order = [];
+  sites.forEach(s => {
+    if (!groups[s.kanai]) { groups[s.kanai] = []; order.push(s.kanai); }
+    groups[s.kanai].push(s);
+  });
+
+  let html = '';
+  order.forEach(kanai => {
+    html += `<div class="kanai-group">
+      <div class="kanai-header">${kanai}</div>`;
+    groups[kanai].forEach(s => {
+      const noClass = s.type === '新規' ? 'site-no shinki' : 'site-no';
+      const kpText = s.start_kp != null
+        ? `${s.start_kp}kp〜${s.end_kp}kp（${s.distance_m}m）`
+        : '距離標未登録';
+      const saved = loadProgress(s.no + '_' + s.kanai);
+      const doneCount = saved ? (saved.shinki_count || (saved.p_done ? Object.keys(saved.p_done).length : 0)) : 0;
+      const doneMark = doneCount > 0 ? ` ✓${doneCount}` : '';
+      html += `<div class="site-item" onclick="selectSite('${encodeURIComponent(s.no + '_' + s.kanai)}')">
+        <span class="${noClass}">${s.no}</span>
+        <div class="site-name-wrap">
+          <div class="site-name">${s.name}${doneMark}</div>
+          <div class="site-kp">${kpText}</div>
+        </div>
+        <span class="site-arrow">›</span>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function filterSites() {
+  const q = document.getElementById('search-input').value.trim().toLowerCase();
+  if (!q) { renderSiteList(allSites); return; }
+  const filtered = allSites.filter(s =>
+    s.name.toLowerCase().includes(q) ||
+    s.no.toLowerCase().includes(q) ||
+    s.kanai.toLowerCase().includes(q)
+  );
+  renderSiteList(filtered);
+}
+
+// ===== 箇所選択 =====
+function selectSite(key) {
+  const decoded = decodeURIComponent(key);
+  const [no, ...rest] = decoded.split('_');
+  const kanai = rest.join('_');
+  currentSite = allSites.find(s => s.no === no && s.kanai === kanai);
+  if (!currentSite) return;
+  renderShootScreen();
+}
+
+// ===== 撮影画面描画 =====
+function renderShootScreen() {
+  const s = currentSite;
+  document.getElementById('home-screen').style.display = 'none';
+  document.getElementById('shoot-screen').style.display = 'block';
+
+  document.getElementById('sh-kanai').textContent = s.kanai;
+  document.getElementById('sh-no-name').textContent = `No.${s.no}　${s.name}`;
+
+  // 箇所情報パネル
+  let infoHtml = '';
+  // 名称
+  infoHtml += `<div class="info-row">
+    <span class="info-label">名称</span>
+    <span class="info-value">${s.name}<span class="info-badge${s.type==='新規'?' shinki':''}">${s.type}</span></span>
+  </div>`;
+  // 距離標
+  if (s.start_kp != null) {
+    infoHtml += `<div class="info-row">
+      <span class="info-label">距離標</span>
+      <span class="info-value">起点 ${s.start_kp}kp〜終点 ${s.end_kp}kp</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">区間距離</span>
+      <span class="info-value" style="color:#1a5c9a;font-weight:bold;">${s.distance_m} m</span>
+    </div>`;
+  } else {
+    infoHtml += `<div class="info-row">
+      <span class="info-label">距離標</span>
+      <span class="info-value" style="color:#999;">未登録</span>
+    </div>`;
+  }
+  // 上り下り
+  infoHtml += `<div class="info-row">
+    <span class="info-label">方向</span>
+    <span class="info-value">${s.direction || '―'}</span>
+  </div>`;
+  document.getElementById('site-info-panel').innerHTML = infoHtml;
+
+  // 撮影本体
+  if (s.type === '新規') {
+    renderShinkiMode();
+  } else {
+    renderKizonMode();
+  }
+}
+
+// ===== 新規モード =====
+function renderShinkiMode() {
+  const s = currentSite;
+  const key = s.no + '_' + s.kanai;
+  let prog = loadProgress(key) || { shinki_count: 0 };
+
+  function redraw() {
+    const num = prog.shinki_count;
+    const filename = `${s.no}_${String(num + 1).padStart(3, '0')}.jpg`;
+    document.getElementById('shoot-body').innerHTML = `
+      <div class="shinki-counter">
+        <div class="counter-num">${num}</div>
+        <div class="counter-label">撮影済み</div>
+        <div class="counter-filename">次のファイル名：${filename}</div>
+      </div>
+      <button class="shoot-btn-big" onclick="shinkiShoot()">📷　撮影（${String(num + 1).padStart(3, '0')}）</button>
+      <button class="undo-btn" onclick="shinkiUndo()">↩　1枚戻す</button>
+      <button class="complete-btn" onclick="confirmComplete()">✔ この箇所を完了</button>`;
+  }
+
+  window.shinkiShoot = function() {
+    const nextNum = (prog.shinki_count || 0) + 1;
+    const fn = `${s.no}_${String(nextNum).padStart(3,'0')}.jpg`;
+    openCamera(function() {
+      prog.shinki_count = nextNum;
+      saveProgress(key, prog);
+      showToast(fn);
+      redraw();
+    });
+  };
+  window.shinkiUndo = function() {
+    if (prog.shinki_count > 0) {
+      prog.shinki_count--;
+      saveProgress(key, prog);
+      redraw();
+    }
+  };
+
+  redraw();
+}
+
+// ===== 既存モード =====
+function renderKizonMode() {
+  const s = currentSite;
+  const key = s.no + '_' + s.kanai;
+  let prog = loadProgress(key) || { p_done: {}, p_pano: {} };
+
+  function getP(n) { return `P${n}`; }
+
+  function redraw() {
+    const maxP = getMaxP(prog);
+    let html = '';
+
+    // 全景・変状の区切りは今回シンプル化 → P番号一覧のみ
+    html += '<div class="p-section-title">P番号チェック（タップで撮影済マーク）</div>';
+    html += '<div class="p-grid">';
+    for (let i = 1; i <= maxP; i++) {
+      const pkey = getP(i);
+      const done = prog.p_done[pkey];
+      const hasPano = prog.p_pano[pkey];
+      let cls = 'p-card';
+      if (hasPano) cls += ' pano-done';
+      else if (done) cls += ' done';
+      html += `<div class="${cls}" onclick="toggleP(${i})">
+        <div class="p-num">${pkey}</div>
+        <div class="p-type">${done ? (hasPano ? 'パノラマ済' : '撮影済') : '未撮影'}</div>
+        <button class="p-pano-btn" onclick="event.stopPropagation();addPano(${i})">＋パノラマ</button>
+      </div>`;
+    }
+    html += '</div>';
+    html += `<button class="add-p-btn" onclick="addPNum()">＋ P番号を追加</button>`;
+    html += `<button class="complete-btn" onclick="confirmComplete()">✔ この箇所を完了</button>`;
+    document.getElementById('shoot-body').innerHTML = html;
+  }
+
+  function getMaxP(p) {
+    const keys = Object.keys(p.p_done || {});
+    if (keys.length === 0) return 3; // デフォルト3つ表示
+    const nums = keys.map(k => parseInt(k.replace('P',''))).filter(n => !isNaN(n));
+    return Math.max(...nums, 3);
+  }
+
+  window.toggleP = function(n) {
+    const pkey = getP(n);
+    if (prog.p_done[pkey]) {
+      // 撮影済みをタップ → 取消
+      delete prog.p_done[pkey];
+      delete prog.p_pano[pkey];
+      saveProgress(key, prog);
+      showToast(`${s.no}_${pkey}（取消）`);
+      redraw();
+    } else {
+      // 未撮影をタップ → カメラ起動
+      const fn = `${s.no}_${pkey}.jpg`;
+      openCamera(function() {
+        prog.p_done[pkey] = true;
+        saveProgress(key, prog);
+        showToast(fn);
+        redraw();
+      });
+    }
+  };
+
+  window.addPano = function(n) {
+    const pkey = getP(n);
+    const nextPano = (prog.p_pano[pkey] || 0) + 1;
+    const fn = `${s.no}_${pkey}-pano${nextPano}.jpg`;
+    openCamera(function() {
+      prog.p_pano[pkey] = nextPano;
+      saveProgress(key, prog);
+      showToast(fn);
+      redraw();
+    });
+  };
+
+  window.addPNum = function() {
+    const maxP = getMaxP(prog);
+    const newN = maxP + 1;
+    prog.p_done[getP(newN)] = false; // 未撮影で追加
+    // maxを更新するためダミーキーを使う
+    // 実際はgetMaxPがkeysから算出するので p_done に追加するだけ
+    saveProgress(key, prog);
+    redraw();
+  };
+
+  redraw();
+}
+
+// ===== 完了確認 =====
+window.confirmComplete = function() {
+  if (confirm(`No.${currentSite.no}　${currentSite.name}\nを完了としますか？`)) {
+    const key = currentSite.no + '_' + currentSite.kanai;
+    let prog = loadProgress(key) || {};
+    prog.completed = true;
+    saveProgress(key, prog);
+    goBack();
+  }
+};
+
+// ===== 戻る =====
+window.goBack = function() {
+  document.getElementById('shoot-screen').style.display = 'none';
+  document.getElementById('home-screen').style.display = 'block';
+  renderSiteList(allSites); // 完了マーク更新のため再描画
+};
+
+// ===== トースト =====
+function showToast(msg) {
+  const t = document.getElementById('fn-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== localStorage =====
+function saveProgress(key, data) {
+  try { localStorage.setItem('prog_' + key, JSON.stringify(data)); } catch(e) {}
+}
+function loadProgress(key) {
+  try {
+    const v = localStorage.getItem('prog_' + key);
+    return v ? JSON.parse(v) : null;
+  } catch(e) { return null; }
+}
+
+init();
+</script>
+</body>
+</html>
