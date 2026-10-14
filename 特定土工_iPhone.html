@@ -12,7 +12,6 @@
   body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f0f0; }
 
   /* ===== ホーム画面 ===== */
-  #home-screen { display: block; }
   .home-header {
     background: #1a5c9a;
     color: white;
@@ -56,7 +55,6 @@
     gap: 10px;
     cursor: pointer;
     -webkit-tap-highlight-color: rgba(0,0,0,0.1);
-    active-background: #e8f0fa;
   }
   .site-item:active { background: #e8f0fa; }
   .site-no {
@@ -76,7 +74,7 @@
   .site-kp { font-size: 12px; color: #888; margin-top: 2px; }
   .site-arrow { color: #aaa; font-size: 18px; }
 
-  /* ===== 箇所詳細・撮影画面 ===== */
+  /* ===== 撮影画面 ===== */
   #shoot-screen { display: none; }
   .shoot-header {
     background: #1a5c9a;
@@ -108,11 +106,7 @@
     font-weight: bold;
     text-align: center;
   }
-  .shoot-kanai {
-    font-size: 12px;
-    font-weight: normal;
-    opacity: 0.8;
-  }
+  .shoot-kanai { font-size: 12px; font-weight: normal; opacity: 0.8; }
 
   /* 箇所情報パネル */
   .site-info-panel {
@@ -127,18 +121,8 @@
     align-items: baseline;
     flex-wrap: wrap;
   }
-  .info-label {
-    font-size: 11px;
-    color: #555;
-    font-weight: bold;
-    min-width: 46px;
-    flex-shrink: 0;
-  }
-  .info-value {
-    font-size: 14px;
-    color: #1a1a1a;
-    font-weight: 500;
-  }
+  .info-label { font-size: 11px; color: #555; font-weight: bold; min-width: 46px; flex-shrink: 0; }
+  .info-value { font-size: 14px; color: #1a1a1a; font-weight: 500; }
   .info-badge {
     display: inline-block;
     background: #1a5c9a;
@@ -153,31 +137,106 @@
   /* 撮影本体 */
   .shoot-body { padding: 12px; }
 
-  /* 新規モード */
-  .shinki-counter {
+  /* ===== 新規モード ===== */
+  .shinki-panel {
     background: white;
     border-radius: 10px;
-    padding: 16px;
-    text-align: center;
+    padding: 14px;
     margin-bottom: 12px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.1);
   }
-  .counter-num {
-    font-size: 64px;
+  .shinki-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .counter-big {
+    font-size: 56px;
     font-weight: bold;
     color: #e67e22;
     line-height: 1;
+    flex-shrink: 0;
+    min-width: 64px;
+    text-align: center;
   }
-  .counter-label { font-size: 14px; color: #666; margin-top: 4px; }
-  .counter-filename {
-    font-size: 13px;
+  .counter-info { flex: 1; }
+  .counter-label { font-size: 13px; color: #888; }
+  .counter-next {
+    font-size: 12px;
     color: #1a5c9a;
-    margin-top: 6px;
     font-family: monospace;
     background: #f0f4fa;
-    padding: 4px 8px;
+    padding: 3px 7px;
     border-radius: 4px;
+    margin-top: 4px;
+    display: inline-block;
   }
+
+  /* サムネイルグリッド（新規・既存共通） */
+  .thumb-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .thumb-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #eee;
+    cursor: pointer;
+  }
+  .thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .thumb-label {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.55);
+    color: white;
+    font-size: 9px;
+    font-family: monospace;
+    padding: 2px 3px;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .thumb-del {
+    position: absolute;
+    top: 2px; right: 2px;
+    background: rgba(192,57,43,0.85);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  /* 保存待ちオーバーレイ */
+  .thumb-pending {
+    position: absolute;
+    inset: 0;
+    background: rgba(231,76,60,0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+    padding: 3px;
+  }
+
+  /* 撮影ボタン */
   .shoot-btn-big {
     width: 100%;
     background: #27ae60;
@@ -188,13 +247,64 @@
     font-size: 18px;
     font-weight: bold;
     cursor: pointer;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
   }
   .shoot-btn-big:active { background: #1e8449; }
+
+  /* 保存確認エリア（撮影直後に出現） */
+  .save-confirm-bar {
+    background: #fef9e7;
+    border: 2px solid #f39c12;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .save-confirm-bar img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 5px;
+    flex-shrink: 0;
+  }
+  .save-confirm-info { flex: 1; }
+  .save-confirm-fname {
+    font-family: monospace;
+    font-size: 13px;
+    color: #1a1a1a;
+    font-weight: bold;
+  }
+  .save-confirm-hint { font-size: 11px; color: #888; margin-top: 2px; }
+  .save-confirm-btns { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+  .btn-save {
+    background: #2980b9;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-save:active { background: #1f6391; }
+  .btn-retake {
+    background: #bdc3c7;
+    color: #333;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-retake:active { background: #aaa; }
+
   .undo-btn {
     width: 100%;
     background: #95a5a6;
@@ -208,7 +318,7 @@
   }
   .undo-btn:active { background: #7f8c8d; }
 
-  /* 既存モード P番号 */
+  /* ===== 既存モード P番号 ===== */
   .p-section-title {
     font-size: 13px;
     font-weight: bold;
@@ -226,28 +336,53 @@
     background: white;
     border: 2px solid #ddd;
     border-radius: 10px;
-    padding: 10px 6px;
-    text-align: center;
+    overflow: hidden;
     cursor: pointer;
-    transition: all 0.15s;
     -webkit-tap-highlight-color: rgba(0,0,0,0);
+    transition: border-color 0.15s;
   }
-  .p-card.done { background: #1a5c9a; border-color: #1a5c9a; color: white; }
-  .p-card.pano-done { background: #8e44ad; border-color: #8e44ad; color: white; }
+  .p-card.done { border-color: #1a5c9a; }
+  .p-card.pano-done { border-color: #8e44ad; }
+  .p-card-header {
+    padding: 8px 6px 4px;
+    text-align: center;
+  }
+  .p-card.done .p-card-header { background: #1a5c9a; color: white; }
+  .p-card.pano-done .p-card-header { background: #8e44ad; color: white; }
   .p-num { font-size: 16px; font-weight: bold; }
-  .p-type { font-size: 11px; margin-top: 2px; opacity: 0.8; }
-  .p-pano-btn {
-    font-size: 10px;
-    background: rgba(0,0,0,0.15);
-    border: none;
-    border-radius: 4px;
-    color: inherit;
-    padding: 2px 5px;
-    margin-top: 4px;
-    cursor: pointer;
-    display: none;
+  .p-status { font-size: 10px; margin-top: 1px; opacity: 0.85; }
+  /* P番号カード内サムネイル */
+  .p-thumb {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    display: block;
+    background: #eee;
   }
-  .p-card.done .p-pano-btn, .p-card.pano-done .p-pano-btn { display: inline-block; }
+  .p-thumb-empty {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+    font-size: 22px;
+  }
+  .p-pano-btn {
+    display: block;
+    width: 100%;
+    font-size: 11px;
+    background: rgba(0,0,0,0.07);
+    border: none;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    color: #555;
+    padding: 5px;
+    cursor: pointer;
+    text-align: center;
+  }
+  .p-card.done .p-pano-btn,
+  .p-card.pano-done .p-pano-btn { color: inherit; background: rgba(255,255,255,0.15); border-top-color: rgba(255,255,255,0.2); }
 
   .add-p-btn {
     width: 100%;
@@ -258,12 +393,27 @@
     font-size: 14px;
     color: #7f8c8d;
     cursor: pointer;
-    margin-top: 6px;
+    margin-top: 2px;
     margin-bottom: 10px;
   }
   .add-p-btn:active { background: #d5dbdb; }
 
-  /* 撮影ファイル名表示 */
+  /* 完了ボタン */
+  .complete-btn {
+    width: 100%;
+    background: #c0392b;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .complete-btn:active { background: #a93226; }
+
+  /* トースト */
   .fn-toast {
     position: fixed;
     bottom: 80px;
@@ -282,21 +432,6 @@
     white-space: nowrap;
   }
   .fn-toast.show { opacity: 1; }
-
-  /* 完了ボタン */
-  .complete-btn {
-    width: 100%;
-    background: #c0392b;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-top: 8px;
-  }
-  .complete-btn:active { background: #a93226; }
 
   /* ローディング */
   #loading-screen {
@@ -347,16 +482,15 @@
         <div id="sh-no-name"></div>
       </div>
     </div>
-    <!-- 箇所情報パネル -->
     <div class="site-info-panel" id="site-info-panel"></div>
   </div>
   <div class="shoot-body" id="shoot-body"></div>
 </div>
 
-<!-- カメラ起動用 hidden input -->
+<!-- カメラ input -->
 <input type="file" accept="image/*" capture="environment" id="camera-input" style="display:none">
 
-<!-- ファイル名トースト -->
+<!-- トースト -->
 <div class="fn-toast" id="fn-toast"></div>
 
 <script>
@@ -365,15 +499,14 @@ const JSON_URL = 'https://raw.githubusercontent.com/bluenilegear/tokuteidoko-too
 let allSites = [];
 let currentSite = null;
 let toastTimer = null;
-let pendingFilename = null;
 
-// カメラ input の onChange
+// ===== カメラ =====
+// 撮影後のファイルをBlobとして保持し、保存確認UIへ渡す
 document.getElementById('camera-input').addEventListener('change', function(e) {
-  if (!e.target.files || e.target.files.length === 0) return;
-  // 撮影完了 → カウント進める
-  if (typeof window._onCameraShot === 'function') window._onCameraShot();
-  // inputをリセット（同じボタンを連続で押せるように）
+  const file = e.target.files && e.target.files[0];
   e.target.value = '';
+  if (!file) return;
+  if (typeof window._onCameraShot === 'function') window._onCameraShot(file);
 });
 
 function openCamera(onShot) {
@@ -392,7 +525,6 @@ async function init() {
     renderSiteList(allSites);
   } catch(e) {
     document.getElementById('loading-msg').textContent = '読み込み失敗。オフライン？';
-    // フォールバック: キャッシュ試行
     try {
       const res2 = await fetch(JSON_URL);
       const data2 = await res2.json();
@@ -406,28 +538,23 @@ async function init() {
   }
 }
 
-// ===== サイトリスト描画 =====
+// ===== ホーム描画 =====
 function renderSiteList(sites) {
   const container = document.getElementById('site-list');
-  // 管内ごとにグループ化
   const groups = {};
   const order = [];
   sites.forEach(s => {
     if (!groups[s.kanai]) { groups[s.kanai] = []; order.push(s.kanai); }
     groups[s.kanai].push(s);
   });
-
   let html = '';
   order.forEach(kanai => {
-    html += `<div class="kanai-group">
-      <div class="kanai-header">${kanai}</div>`;
+    html += `<div class="kanai-group"><div class="kanai-header">${kanai}</div>`;
     groups[kanai].forEach(s => {
       const noClass = s.type === '新規' ? 'site-no shinki' : 'site-no';
-      const kpText = s.start_kp != null
-        ? `${s.start_kp}kp〜${s.end_kp}kp（${s.distance_m}m）`
-        : '距離標未登録';
+      const kpText = s.start_kp != null ? `${s.start_kp}kp〜${s.end_kp}kp（${s.distance_m}m）` : '距離標未登録';
       const saved = loadProgress(s.no + '_' + s.kanai);
-      const doneCount = saved ? (saved.shinki_count || (saved.p_done ? Object.keys(saved.p_done).length : 0)) : 0;
+      const doneCount = saved ? (saved.shinki_count || (saved.p_done ? Object.keys(saved.p_done).filter(k=>saved.p_done[k]).length : 0)) : 0;
       const doneMark = doneCount > 0 ? ` ✓${doneCount}` : '';
       html += `<div class="site-item" onclick="selectSite('${encodeURIComponent(s.no + '_' + s.kanai)}')">
         <span class="${noClass}">${s.no}</span>
@@ -447,9 +574,7 @@ function filterSites() {
   const q = document.getElementById('search-input').value.trim().toLowerCase();
   if (!q) { renderSiteList(allSites); return; }
   const filtered = allSites.filter(s =>
-    s.name.toLowerCase().includes(q) ||
-    s.no.toLowerCase().includes(q) ||
-    s.kanai.toLowerCase().includes(q)
+    s.name.toLowerCase().includes(q) || s.no.toLowerCase().includes(q) || s.kanai.toLowerCase().includes(q)
   );
   renderSiteList(filtered);
 }
@@ -457,30 +582,26 @@ function filterSites() {
 // ===== 箇所選択 =====
 function selectSite(key) {
   const decoded = decodeURIComponent(key);
-  const [no, ...rest] = decoded.split('_');
-  const kanai = rest.join('_');
+  const idx = decoded.indexOf('_');
+  const no = decoded.slice(0, idx);
+  const kanai = decoded.slice(idx + 1);
   currentSite = allSites.find(s => s.no === no && s.kanai === kanai);
   if (!currentSite) return;
   renderShootScreen();
 }
 
-// ===== 撮影画面描画 =====
+// ===== 撮影画面 =====
 function renderShootScreen() {
   const s = currentSite;
   document.getElementById('home-screen').style.display = 'none';
   document.getElementById('shoot-screen').style.display = 'block';
-
   document.getElementById('sh-kanai').textContent = s.kanai;
   document.getElementById('sh-no-name').textContent = `No.${s.no}　${s.name}`;
 
-  // 箇所情報パネル
-  let infoHtml = '';
-  // 名称
-  infoHtml += `<div class="info-row">
+  let infoHtml = `<div class="info-row">
     <span class="info-label">名称</span>
     <span class="info-value">${s.name}<span class="info-badge${s.type==='新規'?' shinki':''}">${s.type}</span></span>
   </div>`;
-  // 距離標
   if (s.start_kp != null) {
     infoHtml += `<div class="info-row">
       <span class="info-label">距離標</span>
@@ -491,62 +612,143 @@ function renderShootScreen() {
       <span class="info-value" style="color:#1a5c9a;font-weight:bold;">${s.distance_m} m</span>
     </div>`;
   } else {
-    infoHtml += `<div class="info-row">
-      <span class="info-label">距離標</span>
-      <span class="info-value" style="color:#999;">未登録</span>
-    </div>`;
+    infoHtml += `<div class="info-row"><span class="info-label">距離標</span><span class="info-value" style="color:#999;">未登録</span></div>`;
   }
-  // 上り下り
-  infoHtml += `<div class="info-row">
-    <span class="info-label">方向</span>
-    <span class="info-value">${s.direction || '―'}</span>
-  </div>`;
+  infoHtml += `<div class="info-row"><span class="info-label">方向</span><span class="info-value">${s.direction || '―'}</span></div>`;
   document.getElementById('site-info-panel').innerHTML = infoHtml;
 
-  // 撮影本体
-  if (s.type === '新規') {
-    renderShinkiMode();
-  } else {
-    renderKizonMode();
-  }
+  if (s.type === '新規') renderShinkiMode();
+  else renderKizonMode();
+}
+
+// ===== 保存ヘルパー =====
+// Blobをファイル名付きでダウンロード保存（iPhoneの「ファイル」アプリ or 写真に保存）
+function savePhoto(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+}
+
+// ===== DataURL → Blob =====
+function dataURLtoBlob(dataURL) {
+  const arr = dataURL.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], { type: mime });
+}
+
+// FileオブジェクトをDataURLに変換
+function fileToDataURL(file) {
+  return new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = e => resolve(e.target.result);
+    r.readAsDataURL(file);
+  });
 }
 
 // ===== 新規モード =====
 function renderShinkiMode() {
   const s = currentSite;
   const key = s.no + '_' + s.kanai;
-  let prog = loadProgress(key) || { shinki_count: 0 };
+  let prog = loadProgress(key) || { shinki_count: 0, thumbs: [] };
+  if (!prog.thumbs) prog.thumbs = [];
+  // 保存待ち状態
+  let pendingFile = null;
+  let pendingDataURL = null;
+  let pendingFilename = null;
+
+  function nextFilename() {
+    return `${s.no}_${String((prog.shinki_count || 0) + 1).padStart(3,'0')}.jpg`;
+  }
 
   function redraw() {
-    const num = prog.shinki_count;
-    const filename = `${s.no}_${String(num + 1).padStart(3, '0')}.jpg`;
+    const num = prog.shinki_count || 0;
+    const fn = nextFilename();
+
+    // サムネイルHTML
+    let thumbHtml = '';
+    if (prog.thumbs.length > 0) {
+      thumbHtml = '<div class="thumb-grid">';
+      prog.thumbs.forEach((t, i) => {
+        thumbHtml += `<div class="thumb-item">
+          <img src="${t.dataURL}" loading="lazy">
+          <div class="thumb-label">${t.filename}</div>
+          <button class="thumb-del" onclick="shinkiDelThumb(${i})" title="削除">×</button>
+        </div>`;
+      });
+      thumbHtml += '</div>';
+    }
+
+    // 保存確認バーHTML
+    let confirmHtml = '';
+    if (pendingDataURL) {
+      confirmHtml = `<div class="save-confirm-bar" id="save-bar">
+        <img src="${pendingDataURL}">
+        <div class="save-confirm-info">
+          <div class="save-confirm-fname">${pendingFilename}</div>
+          <div class="save-confirm-hint">保存してください</div>
+        </div>
+        <div class="save-confirm-btns">
+          <button class="btn-save" onclick="shinkiSave()">💾 保存</button>
+          <button class="btn-retake" onclick="shinkiRetake()">撮り直し</button>
+        </div>
+      </div>`;
+    }
+
     document.getElementById('shoot-body').innerHTML = `
-      <div class="shinki-counter">
-        <div class="counter-num">${num}</div>
-        <div class="counter-label">撮影済み</div>
-        <div class="counter-filename">次のファイル名：${filename}</div>
+      <div class="shinki-panel">
+        <div class="shinki-top">
+          <div class="counter-big">${num}</div>
+          <div class="counter-info">
+            <div class="counter-label">撮影済み</div>
+            <div class="counter-next">次：${fn}</div>
+          </div>
+        </div>
+        ${thumbHtml}
       </div>
-      <button class="shoot-btn-big" onclick="shinkiShoot()">📷　撮影（${String(num + 1).padStart(3, '0')}）</button>
-      <button class="undo-btn" onclick="shinkiUndo()">↩　1枚戻す</button>
+      ${confirmHtml}
+      <button class="shoot-btn-big" onclick="shinkiShoot()" ${pendingDataURL ? 'disabled style="opacity:.5"' : ''}>📷　撮影（${String(num+1).padStart(3,'0')}）</button>
       <button class="complete-btn" onclick="confirmComplete()">✔ この箇所を完了</button>`;
   }
 
   window.shinkiShoot = function() {
-    const nextNum = (prog.shinki_count || 0) + 1;
-    const fn = `${s.no}_${String(nextNum).padStart(3,'0')}.jpg`;
-    openCamera(function() {
-      prog.shinki_count = nextNum;
-      saveProgress(key, prog);
-      showToast(fn);
+    pendingFilename = nextFilename();
+    openCamera(async function(file) {
+      pendingFile = file;
+      pendingDataURL = await fileToDataURL(file);
       redraw();
     });
   };
-  window.shinkiUndo = function() {
-    if (prog.shinki_count > 0) {
-      prog.shinki_count--;
-      saveProgress(key, prog);
-      redraw();
-    }
+
+  window.shinkiSave = function() {
+    if (!pendingFile) return;
+    savePhoto(pendingFile, pendingFilename);
+    // サムネイル追加（DataURL保存）
+    prog.shinki_count = (prog.shinki_count || 0) + 1;
+    prog.thumbs.push({ filename: pendingFilename, dataURL: pendingDataURL });
+    saveProgress(key, prog);
+    showToast('保存：' + pendingFilename);
+    pendingFile = null; pendingDataURL = null; pendingFilename = null;
+    redraw();
+  };
+
+  window.shinkiRetake = function() {
+    pendingFile = null; pendingDataURL = null; pendingFilename = null;
+    redraw();
+  };
+
+  window.shinkiDelThumb = function(i) {
+    prog.thumbs.splice(i, 1);
+    prog.shinki_count = prog.thumbs.length;
+    saveProgress(key, prog);
+    redraw();
   };
 
   redraw();
@@ -556,17 +758,32 @@ function renderShinkiMode() {
 function renderKizonMode() {
   const s = currentSite;
   const key = s.no + '_' + s.kanai;
-  let prog = loadProgress(key) || { p_done: {}, p_pano: {} };
+  let prog = loadProgress(key) || { p_done: {}, p_pano: {}, p_thumbs: {} };
+  if (!prog.p_done) prog.p_done = {};
+  if (!prog.p_pano) prog.p_pano = {};
+  if (!prog.p_thumbs) prog.p_thumbs = {};
+
+  // 保存待ち状態（1件のみ）
+  let pendingFile = null;
+  let pendingDataURL = null;
+  let pendingFilename = null;
+  let pendingPkey = null;
+  let pendingIsPano = false;
 
   function getP(n) { return `P${n}`; }
 
-  function redraw() {
-    const maxP = getMaxP(prog);
-    let html = '';
+  function getMaxP() {
+    const keys = Object.keys(prog.p_done || {});
+    if (keys.length === 0) return 3;
+    const nums = keys.map(k => parseInt(k.replace('P',''))).filter(n => !isNaN(n));
+    return Math.max(...nums, 3);
+  }
 
-    // 全景・変状の区切りは今回シンプル化 → P番号一覧のみ
-    html += '<div class="p-section-title">P番号チェック（タップで撮影済マーク）</div>';
-    html += '<div class="p-grid">';
+  function redraw() {
+    const maxP = getMaxP();
+
+    // P番号グリッド
+    let gridHtml = '<div class="p-grid">';
     for (let i = 1; i <= maxP; i++) {
       const pkey = getP(i);
       const done = prog.p_done[pkey];
@@ -574,64 +791,110 @@ function renderKizonMode() {
       let cls = 'p-card';
       if (hasPano) cls += ' pano-done';
       else if (done) cls += ' done';
-      html += `<div class="${cls}" onclick="toggleP(${i})">
-        <div class="p-num">${pkey}</div>
-        <div class="p-type">${done ? (hasPano ? 'パノラマ済' : '撮影済') : '未撮影'}</div>
-        <button class="p-pano-btn" onclick="event.stopPropagation();addPano(${i})">＋パノラマ</button>
+      const thumb = prog.p_thumbs[pkey];
+      const thumbHtml = thumb
+        ? `<img class="p-thumb" src="${thumb}" loading="lazy">`
+        : `<div class="p-thumb-empty">📷</div>`;
+      const statusTxt = done ? (hasPano ? 'パノラマ済' : '撮影済') : '未撮影';
+      gridHtml += `<div class="${cls}">
+        <div class="p-card-header" onclick="toggleP(${i})">
+          <div class="p-num">${pkey}</div>
+          <div class="p-status">${statusTxt}</div>
+        </div>
+        ${thumbHtml ? `<div onclick="toggleP(${i})">${thumbHtml}</div>` : `<div onclick="toggleP(${i})">${thumbHtml}</div>`}
+        <button class="p-pano-btn" onclick="addPano(${i})" ${done ? '' : 'style="display:none"'}>＋パノラマ撮影</button>
       </div>`;
     }
-    html += '</div>';
-    html += `<button class="add-p-btn" onclick="addPNum()">＋ P番号を追加</button>`;
-    html += `<button class="complete-btn" onclick="confirmComplete()">✔ この箇所を完了</button>`;
-    document.getElementById('shoot-body').innerHTML = html;
-  }
+    gridHtml += '</div>';
 
-  function getMaxP(p) {
-    const keys = Object.keys(p.p_done || {});
-    if (keys.length === 0) return 3; // デフォルト3つ表示
-    const nums = keys.map(k => parseInt(k.replace('P',''))).filter(n => !isNaN(n));
-    return Math.max(...nums, 3);
+    // 保存確認バー
+    let confirmHtml = '';
+    if (pendingDataURL) {
+      confirmHtml = `<div class="save-confirm-bar">
+        <img src="${pendingDataURL}">
+        <div class="save-confirm-info">
+          <div class="save-confirm-fname">${pendingFilename}</div>
+          <div class="save-confirm-hint">保存してください</div>
+        </div>
+        <div class="save-confirm-btns">
+          <button class="btn-save" onclick="kizonSave()">💾 保存</button>
+          <button class="btn-retake" onclick="kizonRetake()">撮り直し</button>
+        </div>
+      </div>`;
+    }
+
+    document.getElementById('shoot-body').innerHTML = `
+      <div class="p-section-title">P番号チェック（タップで撮影）</div>
+      ${gridHtml}
+      ${confirmHtml}
+      <button class="add-p-btn" onclick="addPNum()">＋ P番号を追加</button>
+      <button class="complete-btn" onclick="confirmComplete()">✔ この箇所を完了</button>`;
   }
 
   window.toggleP = function(n) {
+    if (pendingDataURL) return; // 保存待ち中は操作しない
     const pkey = getP(n);
     if (prog.p_done[pkey]) {
-      // 撮影済みをタップ → 取消
+      // 撮影済み → 取消確認
+      if (!confirm(`${s.no}_${pkey} を取り消しますか？`)) return;
       delete prog.p_done[pkey];
       delete prog.p_pano[pkey];
+      delete prog.p_thumbs[pkey];
       saveProgress(key, prog);
-      showToast(`${s.no}_${pkey}（取消）`);
       redraw();
     } else {
-      // 未撮影をタップ → カメラ起動
-      const fn = `${s.no}_${pkey}.jpg`;
-      openCamera(function() {
-        prog.p_done[pkey] = true;
-        saveProgress(key, prog);
-        showToast(fn);
+      // 未撮影 → カメラ起動
+      pendingPkey = pkey;
+      pendingIsPano = false;
+      pendingFilename = `${s.no}_${pkey}.jpg`;
+      openCamera(async function(file) {
+        pendingFile = file;
+        pendingDataURL = await fileToDataURL(file);
         redraw();
       });
     }
   };
 
   window.addPano = function(n) {
+    if (pendingDataURL) return;
     const pkey = getP(n);
     const nextPano = (prog.p_pano[pkey] || 0) + 1;
-    const fn = `${s.no}_${pkey}-pano${nextPano}.jpg`;
-    openCamera(function() {
-      prog.p_pano[pkey] = nextPano;
-      saveProgress(key, prog);
-      showToast(fn);
+    pendingPkey = pkey;
+    pendingIsPano = true;
+    pendingFilename = `${s.no}_${pkey}-pano${nextPano}.jpg`;
+    openCamera(async function(file) {
+      pendingFile = file;
+      pendingDataURL = await fileToDataURL(file);
       redraw();
     });
   };
 
+  window.kizonSave = function() {
+    if (!pendingFile) return;
+    savePhoto(pendingFile, pendingFilename);
+    if (pendingIsPano) {
+      const nextPano = (prog.p_pano[pendingPkey] || 0) + 1;
+      prog.p_pano[pendingPkey] = nextPano;
+    } else {
+      prog.p_done[pendingPkey] = true;
+      prog.p_thumbs[pendingPkey] = pendingDataURL; // サムネイル保存
+    }
+    saveProgress(key, prog);
+    showToast('保存：' + pendingFilename);
+    pendingFile = null; pendingDataURL = null; pendingFilename = null;
+    pendingPkey = null; pendingIsPano = false;
+    redraw();
+  };
+
+  window.kizonRetake = function() {
+    pendingFile = null; pendingDataURL = null; pendingFilename = null;
+    pendingPkey = null; pendingIsPano = false;
+    redraw();
+  };
+
   window.addPNum = function() {
-    const maxP = getMaxP(prog);
-    const newN = maxP + 1;
-    prog.p_done[getP(newN)] = false; // 未撮影で追加
-    // maxを更新するためダミーキーを使う
-    // 実際はgetMaxPがkeysから算出するので p_done に追加するだけ
+    const newN = getMaxP() + 1;
+    prog.p_done[getP(newN)] = false;
     saveProgress(key, prog);
     redraw();
   };
@@ -654,7 +917,7 @@ window.confirmComplete = function() {
 window.goBack = function() {
   document.getElementById('shoot-screen').style.display = 'none';
   document.getElementById('home-screen').style.display = 'block';
-  renderSiteList(allSites); // 完了マーク更新のため再描画
+  renderSiteList(allSites);
 };
 
 // ===== トースト =====
