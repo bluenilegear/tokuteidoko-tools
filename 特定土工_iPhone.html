@@ -74,6 +74,83 @@
   .site-kp { font-size: 12px; color: #888; margin-top: 2px; }
   .site-arrow { color: #aaa; font-size: 18px; }
 
+  /* 完了履歴ボタン */
+  .history-btn {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 10px 12px 4px;
+    background: white;
+    border: 2px solid #1a5c9a;
+    color: #1a5c9a;
+    border-radius: 10px;
+    padding: 11px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+  }
+  .history-btn:active { background: #e8f0fa; }
+
+  /* 履歴モーダル */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 500;
+    display: flex; align-items: flex-end;
+  }
+  .modal-sheet {
+    background: white;
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    padding: 0 0 32px;
+  }
+  .modal-header {
+    position: sticky; top: 0;
+    background: white;
+    border-bottom: 1px solid #eee;
+    padding: 14px 16px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-size: 17px; font-weight: bold; color: #1a1a1a; }
+  .modal-close {
+    background: #eee; border: none; border-radius: 50%;
+    width: 30px; height: 30px; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hist-day {
+    padding: 10px 16px 4px;
+    font-size: 13px; font-weight: bold; color: #1a5c9a;
+    border-bottom: 1px solid #e8f0fa;
+    background: #f5f8ff;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .hist-count { font-size: 12px; color: #555; font-weight: normal; }
+  .hist-item {
+    padding: 9px 16px 9px 24px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hist-no {
+    background: #1a5c9a; color: white;
+    border-radius: 4px; padding: 2px 7px;
+    font-size: 12px; font-weight: bold; flex-shrink: 0;
+  }
+  .hist-no.shinki { background: #e67e22; }
+  .hist-name { font-size: 14px; color: #333; flex: 1; }
+  .hist-shots { font-size: 12px; color: #27ae60; flex-shrink: 0; }
+  .hist-empty { padding: 24px; text-align: center; color: #aaa; font-size: 14px; }
+  /* 完了済み箇所 */
+  .site-item.completed { background: #f5f5f5; }
+  .site-item.completed .site-name { color: #999; text-decoration: line-through; }
+  .site-item.completed .site-no { background: #aaa; }
+  .site-item.completed .site-no.shinki { background: #c8a87a; }
+  .site-done-badge {
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
   /* ===== 撮影画面 ===== */
   #shoot-screen { display: none; }
   .shoot-header {
@@ -469,7 +546,19 @@
   <div class="search-box">
     <input type="search" id="search-input" placeholder="箇所名・No.で絞り込み" oninput="filterSites()">
   </div>
+  <button class="history-btn" onclick="showHistory()">📋　完了履歴を見る</button>
   <div id="site-list"></div>
+</div>
+
+<!-- 完了履歴モーダル -->
+<div class="modal-overlay" id="history-modal" style="display:none;" onclick="hideHistory(event)">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <span class="modal-title">📋 完了履歴</span>
+      <button class="modal-close" onclick="hideHistory()">✕</button>
+    </div>
+    <div id="history-body"></div>
+  </div>
 </div>
 
 <!-- 撮影画面 -->
@@ -499,6 +588,22 @@ const JSON_URL = 'https://raw.githubusercontent.com/bluenilegear/tokuteidoko-too
 let allSites = [];
 let currentSite = null;
 let toastTimer = null;
+
+// ===== 管内略称（ファイル名に使用） =====
+function kanaiAbbr(kanai) {
+  if (kanai.includes('雪崩')) return '神岡雪崩';
+  if (kanai.includes('落石') || kanai.includes('落防')) return '神岡落石';
+  if (kanai.includes('神岡')) return '神岡落石'; // 神岡管内のその他
+  if (kanai.includes('下呂')) return '下呂';
+  if (kanai.includes('高山')) return '高山';
+  // 上記にマッチしない場合：管内名から「管内」を除いた先頭4文字
+  return kanai.replace('管内', '').replace(/[（(）)]/g, '').slice(0, 4);
+}
+
+// ファイル名プレフィックス（略称_No）
+function filePrefix(site) {
+  return `${kanaiAbbr(site.kanai)}_${site.no}`;
+}
 
 // ===== カメラ =====
 // 撮影後のファイルをBlobとして保持し、保存確認UIへ渡す
@@ -554,15 +659,20 @@ function renderSiteList(sites) {
       const noClass = s.type === '新規' ? 'site-no shinki' : 'site-no';
       const kpText = s.start_kp != null ? `${s.start_kp}kp〜${s.end_kp}kp（${s.distance_m}m）` : '距離標未登録';
       const saved = loadProgress(s.no + '_' + s.kanai);
+      const isCompleted = saved && saved.completed;
       const doneCount = saved ? (saved.shinki_count || (saved.p_done ? Object.keys(saved.p_done).filter(k=>saved.p_done[k]).length : 0)) : 0;
-      const doneMark = doneCount > 0 ? ` ✓${doneCount}` : '';
-      html += `<div class="site-item" onclick="selectSite('${encodeURIComponent(s.no + '_' + s.kanai)}')">
+      const countBadge = doneCount > 0 && !isCompleted ? `<span style="font-size:12px;color:#27ae60;margin-left:4px;">✓${doneCount}枚</span>` : '';
+      const itemClass = isCompleted ? 'site-item completed' : 'site-item';
+      const rightIcon = isCompleted
+        ? `<span class="site-done-badge">✅</span>`
+        : `<span class="site-arrow">›</span>`;
+      html += `<div class="${itemClass}" onclick="selectSite('${encodeURIComponent(s.no + '_' + s.kanai)}')">
         <span class="${noClass}">${s.no}</span>
         <div class="site-name-wrap">
-          <div class="site-name">${s.name}${doneMark}</div>
+          <div class="site-name">${s.name}${countBadge}</div>
           <div class="site-kp">${kpText}</div>
         </div>
-        <span class="site-arrow">›</span>
+        ${rightIcon}
       </div>`;
     });
     html += '</div>';
@@ -665,7 +775,7 @@ function renderShinkiMode() {
   let pendingFilename = null;
 
   function nextFilename() {
-    return `${s.no}_${String((prog.shinki_count || 0) + 1).padStart(3,'0')}.jpg`;
+    return `${filePrefix(s)}_${String((prog.shinki_count || 0) + 1).padStart(3,'0')}.jpg`;
   }
 
   function redraw() {
@@ -836,7 +946,7 @@ function renderKizonMode() {
     const pkey = getP(n);
     if (prog.p_done[pkey]) {
       // 撮影済み → 取消確認
-      if (!confirm(`${s.no}_${pkey} を取り消しますか？`)) return;
+      if (!confirm(`${filePrefix(s)}_${pkey} を取り消しますか？`)) return;
       delete prog.p_done[pkey];
       delete prog.p_pano[pkey];
       delete prog.p_thumbs[pkey];
@@ -846,7 +956,7 @@ function renderKizonMode() {
       // 未撮影 → カメラ起動
       pendingPkey = pkey;
       pendingIsPano = false;
-      pendingFilename = `${s.no}_${pkey}.jpg`;
+      pendingFilename = `${filePrefix(s)}_${pkey}.jpg`;
       openCamera(async function(file) {
         pendingFile = file;
         pendingDataURL = await fileToDataURL(file);
@@ -861,7 +971,7 @@ function renderKizonMode() {
     const nextPano = (prog.p_pano[pkey] || 0) + 1;
     pendingPkey = pkey;
     pendingIsPano = true;
-    pendingFilename = `${s.no}_${pkey}-pano${nextPano}.jpg`;
+    pendingFilename = `${filePrefix(s)}_${pkey}-pano${nextPano}.jpg`;
     openCamera(async function(file) {
       pendingFile = file;
       pendingDataURL = await fileToDataURL(file);
@@ -904,14 +1014,81 @@ function renderKizonMode() {
 
 // ===== 完了確認 =====
 window.confirmComplete = function() {
-  if (confirm(`No.${currentSite.no}　${currentSite.name}\nを完了としますか？`)) {
-    const key = currentSite.no + '_' + currentSite.kanai;
+  const s = currentSite;
+  const shots = (function() {
+    const key = s.no + '_' + s.kanai;
+    const prog = loadProgress(key) || {};
+    if (s.type === '新規') return prog.shinki_count || 0;
+    return Object.keys(prog.p_done || {}).filter(k => prog.p_done[k]).length;
+  })();
+  if (confirm(`No.${s.no}　${s.name}\nを完了としますか？\n（撮影済み ${shots}枚）`)) {
+    const key = s.no + '_' + s.kanai;
     let prog = loadProgress(key) || {};
     prog.completed = true;
+    prog.completed_date = todayStr();
     saveProgress(key, prog);
     goBack();
   }
 };
+
+// ===== 日付ヘルパー =====
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatDate(str) {
+  if (!str) return '日付不明';
+  const [y, m, d] = str.split('-');
+  return `${y}年${parseInt(m)}月${parseInt(d)}日`;
+}
+
+// ===== 完了履歴 =====
+function showHistory() {
+  // 全箇所のprogを集めて日付でグループ化
+  const byDate = {};
+  allSites.forEach(s => {
+    const key = s.no + '_' + s.kanai;
+    const prog = loadProgress(key);
+    if (!prog || !prog.completed) return;
+    const date = prog.completed_date || '日付なし';
+    if (!byDate[date]) byDate[date] = [];
+    const shots = s.type === '新規'
+      ? (prog.shinki_count || 0)
+      : Object.keys(prog.p_done || {}).filter(k => prog.p_done[k]).length;
+    byDate[date].push({ s, shots });
+  });
+
+  const dates = Object.keys(byDate).sort().reverse(); // 新しい順
+  let html = '';
+  if (dates.length === 0) {
+    html = '<div class="hist-empty">完了した箇所はまだありません</div>';
+  } else {
+    dates.forEach(date => {
+      const items = byDate[date];
+      const totalShots = items.reduce((a, b) => a + b.shots, 0);
+      html += `<div class="hist-day">
+        <span>${formatDate(date)}</span>
+        <span class="hist-count">${items.length}箇所・計${totalShots}枚</span>
+      </div>`;
+      items.forEach(({ s, shots }) => {
+        const noClass = s.type === '新規' ? 'hist-no shinki' : 'hist-no';
+        html += `<div class="hist-item">
+          <span class="${noClass}">${s.no}</span>
+          <span class="hist-name">${s.name}</span>
+          <span class="hist-shots">📷 ${shots}枚</span>
+        </div>`;
+      });
+    });
+  }
+
+  document.getElementById('history-body').innerHTML = html;
+  document.getElementById('history-modal').style.display = 'flex';
+}
+
+function hideHistory(e) {
+  if (e && e.target !== document.getElementById('history-modal')) return;
+  document.getElementById('history-modal').style.display = 'none';
+}
 
 // ===== 戻る =====
 window.goBack = function() {
