@@ -140,6 +140,12 @@
   .hist-no.shinki { background: #e67e22; }
   .hist-name { font-size: 14px; color: #333; flex: 1; }
   .hist-shots { font-size: 12px; color: #27ae60; flex-shrink: 0; }
+  .hist-undo-btn {
+    background: none; border: 1px solid #e74c3c; color: #e74c3c;
+    border-radius: 5px; padding: 3px 8px; font-size: 11px;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .hist-undo-btn:active { background: #fdecea; }
   .hist-empty { padding: 24px; text-align: center; color: #aaa; font-size: 14px; }
   /* 完了済み箇所 */
   .site-item.completed { background: #f5f5f5; }
@@ -1072,10 +1078,12 @@ function showHistory() {
       </div>`;
       items.forEach(({ s, shots }) => {
         const noClass = s.type === '新規' ? 'hist-no shinki' : 'hist-no';
+        const encKey = encodeURIComponent(s.no + '_' + s.kanai);
         html += `<div class="hist-item">
           <span class="${noClass}">${s.no}</span>
           <span class="hist-name">${s.name}</span>
           <span class="hist-shots">📷 ${shots}枚</span>
+          <button class="hist-undo-btn" onclick="undoComplete('${encKey}')">解除</button>
         </div>`;
       });
     });
@@ -1083,6 +1091,17 @@ function showHistory() {
 
   document.getElementById('history-body').innerHTML = html;
   document.getElementById('history-modal').style.display = 'flex';
+}
+
+function undoComplete(encKey) {
+  const key = decodeURIComponent(encKey);
+  let prog = loadProgress(key);
+  if (!prog) return;
+  delete prog.completed;
+  delete prog.completed_date;
+  saveProgress(key, prog);
+  showHistory(); // モーダルを再描画
+  renderSiteList(allSites); // 一覧も更新
 }
 
 function hideHistory(e) {
