@@ -978,7 +978,24 @@ document.getElementById('site-list').addEventListener('click', function(e) {
   if (!item) return;
   const decoded = decodeURIComponent(item.dataset.selectSite);
   const parts = decoded.split('|||');
-  selectSite(parts[0], parts[1]);
+  const no = parts[0], kanai = parts[1];
+  const key = no + '_' + kanai;
+  const prog = loadProgress(key) || {};
+  // 完了済みの場合は解除確認
+  if (prog.completed) {
+    const site = allSites.find(function(s) { return s.no === no && s.kanai === kanai; });
+    const name = site ? site.name : no;
+    if (confirm('No.' + no + '　' + name + '\nはすでに完了しています。\n完了を解除して編集しますか？')) {
+      delete prog.completed;
+      delete prog.completed_date;
+      saveProgress(key, prog);
+      renderSiteList(allSites.filter ? allSites : allSites);
+      filterSites();
+      selectSite(no, kanai);
+    }
+    return;
+  }
+  selectSite(no, kanai);
 });
 
 function filterSites() {
