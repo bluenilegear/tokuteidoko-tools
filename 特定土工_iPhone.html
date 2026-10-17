@@ -322,24 +322,26 @@
   }
   .site-tab-add:active { color: white; }
 
-  /* 箇所情報パネル（横向き対応：2カラムグリッド） */
+  /* 箇所情報パネル（横向き対応：1行横並び） */
   .site-info-panel {
     background: #e8f0fa;
     border-bottom: 2px solid #1a5c9a;
-    padding: 5px 12px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0 8px;
+    padding: 4px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 12px;
+    align-items: center;
   }
   .info-row {
     display: flex;
-    gap: 5px;
+    gap: 4px;
     align-items: baseline;
-    padding: 2px 0;
+    padding: 1px 0;
     min-width: 0;
+    flex-shrink: 0;
   }
-  .info-row.full { grid-column: 1 / -1; }
-  .info-label { font-size: 10px; color: #555; font-weight: bold; min-width: 40px; flex-shrink: 0; }
+  .info-row.full { flex-basis: 100%; }
+  .info-label { font-size: 10px; color: #555; font-weight: bold; flex-shrink: 0; }
   .info-value { font-size: 12px; color: #1a1a1a; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .info-badge {
     display: inline-block;
@@ -355,6 +357,8 @@
 
   /* 撮影本体 */
   .shoot-body { padding: 8px 12px; }
+  /* 保存パネルが出ているとき右端を避ける */
+  .shoot-body.has-pending { padding-right: 100px; }
 
   /* ===== 新規モード ===== */
   .shinki-panel {
@@ -474,43 +478,55 @@
   }
   .shoot-btn-big:active { background: #1e8449; }
 
-  /* 保存確認エリア（撮影直後に出現） */
+  /* 保存確認パネル（画面右端に固定） */
   .save-confirm-bar {
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
     background: #fef9e7;
     border: 2px solid #f39c12;
-    border-radius: 10px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
+    border-right: none;
+    border-radius: 12px 0 0 12px;
+    padding: 10px 10px 10px 12px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    z-index: 200;
+    width: 90px;
+    box-shadow: -3px 0 12px rgba(0,0,0,0.18);
   }
   .save-confirm-bar img {
-    width: 56px;
-    height: 56px;
+    width: 68px;
+    height: 68px;
     object-fit: cover;
-    border-radius: 5px;
+    border-radius: 6px;
     flex-shrink: 0;
   }
-  .save-confirm-info { flex: 1; }
+  .save-confirm-info { width: 100%; }
   .save-confirm-fname {
     font-family: monospace;
-    font-size: 13px;
+    font-size: 9px;
     color: #1a1a1a;
     font-weight: bold;
+    word-break: break-all;
+    line-height: 1.3;
   }
-  .save-confirm-hint { font-size: 11px; color: #888; margin-top: 2px; }
-  .save-confirm-btns { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+  .save-confirm-hint { font-size: 9px; color: #888; margin-top: 2px; }
+  .save-confirm-btns { display: flex; flex-direction: column; gap: 5px; width: 100%; }
   .btn-save {
     background: #2980b9;
     color: white;
     border: none;
     border-radius: 7px;
-    padding: 8px 12px;
+    padding: 9px 4px;
     font-size: 13px;
     font-weight: bold;
     cursor: pointer;
     white-space: nowrap;
+    width: 100%;
+    text-align: center;
   }
   .btn-save:active { background: #1f6391; }
   .btn-retake {
@@ -518,9 +534,11 @@
     color: #333;
     border: none;
     border-radius: 7px;
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 7px 4px;
+    font-size: 11px;
     cursor: pointer;
+    width: 100%;
+    text-align: center;
   }
   .btn-retake:active { background: #aaa; }
 
@@ -548,8 +566,11 @@
   .p-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  @media (orientation: landscape) {
+    .p-grid { grid-template-columns: repeat(5, 1fr); gap: 5px; }
   }
   .p-card {
     background: white;
@@ -1092,13 +1113,11 @@ function renderShootScreen() {
   document.getElementById('sh-kanai').textContent = s.kanai;
   document.getElementById('sh-no-name').textContent = 'No.' + s.no + '　' + s.name;
 
-  // 2カラムグリッド：名称はfull幅、距離標＋区間距離・方向を横並びに
-  let infoHtml = '<div class="info-row full"><span class="info-label">名称</span><span class="info-value">' + s.name + '<span class="info-badge' + (s.type === '新規' ? ' shinki' : '') + '">' + s.type + '</span></span></div>';
+  // 1行横並び：名称 ｜ 距離標 ｜ 距離 ｜ 方向
+  let infoHtml = '<div class="info-row" style="flex:1;min-width:0;"><span class="info-value" style="font-weight:bold;font-size:13px;overflow:hidden;text-overflow:ellipsis;">' + s.name + '</span><span class="info-badge' + (s.type === '新規' ? ' shinki' : '') + '" style="margin-left:5px;">' + s.type + '</span></div>';
   if (s.start_kp != null) {
     infoHtml += '<div class="info-row"><span class="info-label">距離標</span><span class="info-value">' + s.start_kp + '〜' + s.end_kp + 'kp</span></div>'
-      + '<div class="info-row"><span class="info-label">距離</span><span class="info-value" style="color:#1a5c9a;font-weight:bold;">' + s.distance_m + ' m</span></div>';
-  } else {
-    infoHtml += '<div class="info-row"><span class="info-label">距離標</span><span class="info-value" style="color:#999;">未登録</span></div>';
+      + '<div class="info-row"><span class="info-label">距離</span><span class="info-value" style="color:#1a5c9a;font-weight:bold;">' + s.distance_m + 'm</span></div>';
   }
   infoHtml += '<div class="info-row"><span class="info-label">方向</span><span class="info-value">' + (s.direction || '―') + '</span></div>';
   document.getElementById('site-info-panel').innerHTML = infoHtml;
@@ -1466,6 +1485,13 @@ function redrawShoot() {
   if (!s) return;
   const key = s.no + '_' + s.kanai;
   const ts = getTabState(key);
+  // 保存パネルがあるとき右端パディングを追加
+  const bodyEl = document.getElementById('shoot-body');
+  if (ts.pendingDataURL) {
+    bodyEl.classList.add('has-pending');
+  } else {
+    bodyEl.classList.remove('has-pending');
+  }
 
   if (s.type === '新規') {
     const prog = loadProgress(key) || { shinki_count: 0, thumbs: [] };
