@@ -322,56 +322,61 @@
   }
   .site-tab-add:active { color: white; }
 
-  /* 箇所情報パネル */
+  /* 箇所情報パネル（横向き対応：2カラムグリッド） */
   .site-info-panel {
     background: #e8f0fa;
     border-bottom: 2px solid #1a5c9a;
-    padding: 10px 16px;
+    padding: 5px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 8px;
   }
   .info-row {
     display: flex;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: 5px;
     align-items: baseline;
-    flex-wrap: wrap;
+    padding: 2px 0;
+    min-width: 0;
   }
-  .info-label { font-size: 11px; color: #555; font-weight: bold; min-width: 46px; flex-shrink: 0; }
-  .info-value { font-size: 14px; color: #1a1a1a; font-weight: 500; }
+  .info-row.full { grid-column: 1 / -1; }
+  .info-label { font-size: 10px; color: #555; font-weight: bold; min-width: 40px; flex-shrink: 0; }
+  .info-value { font-size: 12px; color: #1a1a1a; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .info-badge {
     display: inline-block;
     background: #1a5c9a;
     color: white;
     border-radius: 4px;
-    padding: 1px 7px;
-    font-size: 11px;
-    margin-left: 6px;
+    padding: 1px 6px;
+    font-size: 10px;
+    margin-left: 4px;
+    flex-shrink: 0;
   }
   .info-badge.shinki { background: #e67e22; }
 
   /* 撮影本体 */
-  .shoot-body { padding: 12px; }
+  .shoot-body { padding: 8px 12px; }
 
   /* ===== 新規モード ===== */
   .shinki-panel {
     background: white;
     border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.1);
   }
   .shinki-top {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 10px;
+    gap: 10px;
+    margin-bottom: 6px;
   }
   .counter-big {
-    font-size: 56px;
+    font-size: 42px;
     font-weight: bold;
     color: #e67e22;
     line-height: 1;
     flex-shrink: 0;
-    min-width: 64px;
+    min-width: 50px;
     text-align: center;
   }
   .counter-info { flex: 1; }
@@ -390,14 +395,14 @@
   /* サムネイルグリッド（新規・既存共通） */
   .thumb-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
-    margin-top: 8px;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
+    margin-top: 6px;
   }
   .thumb-item {
     position: relative;
     aspect-ratio: 1;
-    border-radius: 5px;
+    border-radius: 4px;
     overflow: hidden;
     background: #eee;
     cursor: pointer;
@@ -456,12 +461,12 @@
     background: #27ae60;
     color: white;
     border: none;
-    border-radius: 12px;
-    padding: 18px;
-    font-size: 18px;
+    border-radius: 10px;
+    padding: 13px;
+    font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -867,22 +872,54 @@ function filePrefix(site) {
 
 // ===== カメラ =====
 function openCamera(onShot) {
-  // iOSでは同じinput要素の連続使用でchangeが発火しないため毎回作り直す
-  const old = document.getElementById('camera-input');
-  if (old) old.remove();
+  // iOSではJS経由の.click()が2回目以降無視される場合があるため、
+  // inputとlabelを毎回作り直してlabel.click()で起動する
+  ['camera-input','camera-label'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
-  input.capture = 'environment';
+  input.setAttribute('capture', 'environment');
   input.id = 'camera-input';
-  input.style.display = 'none';
+  input.style.cssText = 'position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0;';
+  const label = document.createElement('label');
+  label.id = 'camera-label';
+  label.htmlFor = 'camera-input';
+  label.style.cssText = 'position:fixed;top:-999px;left:-999px;width:1px;height:1px;';
   document.body.appendChild(input);
+  document.body.appendChild(label);
   input.addEventListener('change', function(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
     onShot(file);
   });
-  input.click();
+  label.click();
+}
+
+// ===== セッション復元（リロード対策） =====
+const SESSION_KEY = 'shoot_session';
+function saveSession() {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ openSites: openSites, currentTabIdx: currentTabIdx }));
+  } catch(e) {}
+}
+function restoreSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s.openSites || s.openSites.length === 0) return false;
+    // 存在する箇所だけ復元
+    const valid = s.openSites.filter(function(r) {
+      return allSites.find(function(site) { return site.no === r.no && site.kanai === r.kanai; });
+    });
+    if (valid.length === 0) return false;
+    openSites = valid;
+    currentTabIdx = Math.min(s.currentTabIdx || 0, valid.length - 1);
+    return true;
+  } catch(e) { return false; }
 }
 
 // ===== 起動 =====
@@ -892,9 +929,13 @@ async function init() {
     const data = await res.json();
     allSites = data.sites.concat(loadUserSites());
     document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('home-screen').style.display = 'block';
     renderKanaiFilter();
     renderSiteList(allSites);
+    if (restoreSession()) {
+      renderShootScreen();
+    } else {
+      document.getElementById('home-screen').style.display = 'block';
+    }
   } catch(e) {
     document.getElementById('loading-msg').textContent = '読み込み失敗。オフライン？';
     try {
@@ -902,9 +943,13 @@ async function init() {
       const data2 = await res2.json();
       allSites = data2.sites.concat(loadUserSites());
       document.getElementById('loading-screen').style.display = 'none';
-      document.getElementById('home-screen').style.display = 'block';
       renderKanaiFilter();
       renderSiteList(allSites);
+      if (restoreSession()) {
+        renderShootScreen();
+      } else {
+        document.getElementById('home-screen').style.display = 'block';
+      }
     } catch(e2) {
       document.getElementById('loading-msg').textContent = 'ネットワークエラー。Wi-Fiを確認してください。';
     }
@@ -1029,6 +1074,7 @@ function selectSite(no, kanai) {
     openSites.push({ no: no, kanai: kanai });
     currentTabIdx = openSites.length - 1;
   }
+  saveSession();
   renderShootScreen();
 }
 
@@ -1046,10 +1092,11 @@ function renderShootScreen() {
   document.getElementById('sh-kanai').textContent = s.kanai;
   document.getElementById('sh-no-name').textContent = 'No.' + s.no + '　' + s.name;
 
-  let infoHtml = '<div class="info-row"><span class="info-label">名称</span><span class="info-value">' + s.name + '<span class="info-badge' + (s.type === '新規' ? ' shinki' : '') + '">' + s.type + '</span></span></div>';
+  // 2カラムグリッド：名称はfull幅、距離標＋区間距離・方向を横並びに
+  let infoHtml = '<div class="info-row full"><span class="info-label">名称</span><span class="info-value">' + s.name + '<span class="info-badge' + (s.type === '新規' ? ' shinki' : '') + '">' + s.type + '</span></span></div>';
   if (s.start_kp != null) {
-    infoHtml += '<div class="info-row"><span class="info-label">距離標</span><span class="info-value">起点 ' + s.start_kp + 'kp〜終点 ' + s.end_kp + 'kp</span></div>'
-      + '<div class="info-row"><span class="info-label">区間距離</span><span class="info-value" style="color:#1a5c9a;font-weight:bold;">' + s.distance_m + ' m</span></div>';
+    infoHtml += '<div class="info-row"><span class="info-label">距離標</span><span class="info-value">' + s.start_kp + '〜' + s.end_kp + 'kp</span></div>'
+      + '<div class="info-row"><span class="info-label">距離</span><span class="info-value" style="color:#1a5c9a;font-weight:bold;">' + s.distance_m + ' m</span></div>';
   } else {
     infoHtml += '<div class="info-row"><span class="info-label">距離標</span><span class="info-value" style="color:#999;">未登録</span></div>';
   }
@@ -1088,6 +1135,7 @@ document.getElementById('site-tabs-bar').addEventListener('click', function(e) {
     openSites.splice(idx, 1);
     currentTabIdx = Math.min(currentTabIdx, openSites.length - 1);
     if (openSites.length === 0) { goBack(); return; }
+    saveSession();
     renderShootScreen();
     return;
   }
@@ -1097,6 +1145,7 @@ document.getElementById('site-tabs-bar').addEventListener('click', function(e) {
     const idx = parseInt(tab.dataset.tabIdx, 10);
     if (idx !== currentTabIdx) {
       currentTabIdx = idx;
+      saveSession();
       renderShootScreen();
     }
     return;
@@ -1770,6 +1819,7 @@ document.getElementById('back-btn').addEventListener('click', function() { goBac
 function goBack() {
   openSites = [];
   currentTabIdx = 0;
+  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
   document.getElementById('shoot-screen').style.display = 'none';
   document.getElementById('home-screen').style.display = 'block';
   renderSiteList(allSites);
