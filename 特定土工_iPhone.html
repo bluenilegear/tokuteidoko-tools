@@ -1039,23 +1039,35 @@ function renderShootScreen() {
 // ===== タブバー描画 =====
 function renderSiteTabs() {
   const bar = document.getElementById('site-tabs-bar');
-  if (openSites.length <= 1) {
-    bar.style.display = 'none';
-    return;
-  }
   bar.style.display = 'flex';
   let html = '';
   openSites.forEach(function(ref, idx) {
     const site = allSites.find(function(s) { return s.no === ref.no && s.kanai === ref.kanai; });
     const label = site ? 'No.' + site.no : ref.no;
     const cls = idx === currentTabIdx ? 'site-tab active' : 'site-tab';
-    html += '<div class="' + cls + '" data-tab-idx="' + idx + '">' + label + '</div>';
+    // タブが2つ以上あるときだけ×ボタンを表示
+    const closeBtn = openSites.length > 1
+      ? '<span data-tab-close="' + idx + '" style="margin-left:5px;opacity:0.6;font-size:11px;">✕</span>'
+      : '';
+    html += '<div class="' + cls + '" data-tab-idx="' + idx + '">' + label + closeBtn + '</div>';
   });
-  html += '<div class="site-tab-add" data-tab-add="1">＋</div>';
+  html += '<div class="site-tab-add" data-tab-add="1">＋ 追加</div>';
   bar.innerHTML = html;
 }
 
 document.getElementById('site-tabs-bar').addEventListener('click', function(e) {
+  // ×ボタン（タブ閉じる）
+  const closeBtn = e.target.closest('[data-tab-close]');
+  if (closeBtn) {
+    e.stopPropagation();
+    const idx = parseInt(closeBtn.dataset.tabClose, 10);
+    openSites.splice(idx, 1);
+    currentTabIdx = Math.min(currentTabIdx, openSites.length - 1);
+    if (openSites.length === 0) { goBack(); return; }
+    renderShootScreen();
+    return;
+  }
+  // タブ切り替え
   const tab = e.target.closest('[data-tab-idx]');
   if (tab) {
     const idx = parseInt(tab.dataset.tabIdx, 10);
@@ -1065,6 +1077,7 @@ document.getElementById('site-tabs-bar').addEventListener('click', function(e) {
     }
     return;
   }
+  // ＋追加
   const addBtn = e.target.closest('[data-tab-add]');
   if (addBtn) {
     showSitePicker();
