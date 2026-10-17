@@ -1338,7 +1338,8 @@ document.getElementById('shoot-body').addEventListener('click', function(e) {
         ts.pendingFile = file;
         fileToDataURL(file).then(function(url) {
           ts.pendingDataURL = url;
-          fileToThumbDataURL(file).then(function(thumb) { ts.pendingThumbDataURL = thumb; redrawShoot(); });
+          redrawShoot(); // サムネ待たずにすぐ表示
+          fileToThumbDataURL(file).then(function(thumb) { ts.pendingThumbDataURL = thumb; });
         });
       });
       return;
@@ -1409,7 +1410,8 @@ document.getElementById('shoot-body').addEventListener('click', function(e) {
           ts.pendingFile = file;
           fileToDataURL(file).then(function(url) {
             ts.pendingDataURL = url;
-            fileToThumbDataURL(file).then(function(thumb) { ts.pendingThumbDataURL = thumb; redrawShoot(); });
+            redrawShoot(); // サムネ待たずにすぐ表示
+            fileToThumbDataURL(file).then(function(thumb) { ts.pendingThumbDataURL = thumb; });
           });
         });
       }
@@ -1429,7 +1431,8 @@ document.getElementById('shoot-body').addEventListener('click', function(e) {
         ts.pendingFile = file;
         fileToDataURL(file).then(function(url) {
           ts.pendingDataURL = url;
-          fileToThumbDataURL(file).then(function(thumb) { ts.pendingThumbDataURL = thumb; redrawShoot(); });
+          redrawShoot(); // サムネ待たずにすぐ表示
+          fileToThumbDataURL(file).then(function(thumb) { ts.pendingThumbDataURL = thumb; });
         });
       });
       return;
