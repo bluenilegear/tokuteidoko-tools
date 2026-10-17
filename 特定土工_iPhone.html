@@ -1178,65 +1178,233 @@ function fileToDataURL(file) {
   });
 }
 
-// ===== 新規モード =====
-function renderShinkiMode() {
+// ===== モード状態（タブをまたいで保持） =====
+// 各箇所キーごとに pending 状態を保持
+const tabStates = {}; // key: { pendingFile, pendingDataURL, pendingFilename, pendingPkey, pendingIsPano }
+
+function getTabState(key) {
+  if (!tabStates[key]) {
+    tabStates[key] = { pendingFile: null, pendingDataURL: null, pendingFilename: null, pendingPkey: null, pendingIsPano: false };
+  }
+  return tabStates[key];
+}
+
+// ===== shoot-body イベント（一度だけ登録） =====
+document.getElementById('shoot-body').addEventListener('click', function(e) {
   const s = currentSite();
+  if (!s) return;
   const key = s.no + '_' + s.kanai;
-  let prog = loadProgress(key) || { shinki_count: 0, thumbs: [] };
-  if (!prog.thumbs) prog.thumbs = [];
-  let pendingFile = null;
-  let pendingDataURL = null;
-  let pendingFilename = null;
+  const ts = getTabState(key);
 
-  function nextFilename() {
-    return filePrefix(s) + '_' + String((prog.shinki_count || 0) + 1).padStart(3, '0') + '.jpg';
-  }
+  if (s.type === '新規') {
+    let prog = loadProgress(key) || { shinki_count: 0, thumbs: [] };
+    if (!prog.thumbs) prog.thumbs = [];
 
-  window.shinkiGetGPS = function(which) {
-    const resultEl = document.getElementById('sh-gps-' + which + '-result');
-    const btnEl = document.getElementById('sh-gps-' + which + '-btn');
-    if (!resultEl || !btnEl) return;
-    btnEl.className = 'gps-btn loading';
-    btnEl.disabled = true;
-    resultEl.className = 'gps-result';
-    resultEl.textContent = '取得中…';
-    if (!navigator.geolocation) {
-      resultEl.textContent = 'GPS非対応';
-      resultEl.className = 'gps-result error';
-      btnEl.className = 'gps-btn'; btnEl.disabled = false; return;
+    // GPS
+    const gpsBtn = e.target.closest('[data-shinki-gps]');
+    if (gpsBtn) { shinkiGetGPS(gpsBtn.dataset.shinkiGps, key, prog); return; }
+    // 撮影
+    if (e.target.closest('[data-shinki-shoot]')) {
+      if (ts.pendingDataURL) return;
+      ts.pendingFilename = filePrefix(s) + '_' + String((prog.shinki_count || 0) + 1).padStart(3, '0') + '.jpg';
+      openCamera(function(file) {
+        ts.pendingFile = file;
+        fileToDataURL(file).then(function(url) { ts.pendingDataURL = url; redrawShoot(); });
+      });
+      return;
     }
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const acc = Math.round(pos.coords.accuracy);
-        if (which === 'start') prog.gps_start = { lat: lat, lon: lon };
-        else prog.gps_end = { lat: lat, lon: lon };
-        saveProgress(key, prog);
-        resultEl.textContent = lat.toFixed(6) + ', ' + lon.toFixed(6) + '（±' + acc + 'm）';
-        resultEl.className = 'gps-result';
-        btnEl.textContent = '再取得';
-        btnEl.className = 'gps-btn'; btnEl.disabled = false;
-      },
-      function(err) {
-        const msg = err.code === 1 ? '許可が必要です' : err.code === 3 ? 'タイムアウト' : '取得失敗';
-        resultEl.textContent = 'エラー：' + msg;
-        resultEl.className = 'gps-result error';
-        btnEl.className = 'gps-btn'; btnEl.disabled = false;
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-    );
-  };
+    // 保存
+    if (e.target.closest('[data-shinki-save]')) {
+      if (!ts.pendingFile) return;
+      savePhoto(ts.pendingFile, ts.pendingFilename);
+      prog = loadProgress(key) || { shinki_count: 0, thumbs: [] };
+      if (!prog.thumbs) prog.thumbs = [];
+      prog.shinki_count = (prog.shinki_count || 0) + 1;
+      prog.thumbs.push({ filename: ts.pendingFilename, dataURL: ts.pendingDataURL });
+      saveProgress(key, prog);
+      showToast('保存：' + ts.pendingFilename);
+      ts.pendingFile = null; ts.pendingDataURL = null; ts.pendingFilename = null;
+      redrawShoot();
+      return;
+    }
+    // 撮り直し
+    if (e.target.closest('[data-shinki-retake]')) {
+      ts.pendingFile = null; ts.pendingDataURL = null; ts.pendingFilename = null;
+      redrawShoot();
+      return;
+    }
+    // サムネイル削除
+    const delBtn = e.target.closest('[data-shinki-del]');
+    if (delBtn) {
+      prog = loadProgress(key) || { shinki_count: 0, thumbs: [] };
+      if (!prog.thumbs) prog.thumbs = [];
+      const i = parseInt(delBtn.dataset.shinkiDel, 10);
+      prog.thumbs.splice(i, 1);
+      prog.shinki_count = prog.thumbs.length;
+      saveProgress(key, prog);
+      redrawShoot();
+      return;
+    }
+  } else {
+    // 既存モード
+    let prog = loadProgress(key) || { p_done: {}, p_pano: {}, p_thumbs: {} };
+    if (!prog.p_done) prog.p_done = {};
+    if (!prog.p_pano) prog.p_pano = {};
+    if (!prog.p_thumbs) prog.p_thumbs = {};
 
-  function gpsStatusHtml(which) {
-    const data = which === 'start' ? prog.gps_start : prog.gps_end;
-    if (data) return data.lat.toFixed(6) + ', ' + data.lon.toFixed(6);
-    return '未取得';
+    function getMaxP() {
+      const keys = Object.keys(prog.p_done || {});
+      if (keys.length === 0) return 3;
+      const nums = keys.map(function(k) { return parseInt(k.replace('P', ''), 10); }).filter(function(n) { return !isNaN(n); });
+      return Math.max.apply(null, nums.concat([3]));
+    }
+
+    // P番号タップ
+    const toggleEl = e.target.closest('[data-toggle-p]');
+    if (toggleEl) {
+      if (ts.pendingDataURL) return;
+      const n = parseInt(toggleEl.dataset.toggleP, 10);
+      const pkey = 'P' + n;
+      if (prog.p_done[pkey]) {
+        delete prog.p_done[pkey];
+        delete prog.p_pano[pkey];
+        delete prog.p_thumbs[pkey];
+        saveProgress(key, prog);
+        redrawShoot();
+      } else {
+        ts.pendingPkey = pkey;
+        ts.pendingIsPano = false;
+        ts.pendingFilename = filePrefix(s) + '_' + pkey + '.jpg';
+        openCamera(function(file) {
+          ts.pendingFile = file;
+          fileToDataURL(file).then(function(url) { ts.pendingDataURL = url; redrawShoot(); });
+        });
+      }
+      return;
+    }
+    // パノラマ
+    const panoEl = e.target.closest('[data-pano-p]');
+    if (panoEl) {
+      if (ts.pendingDataURL) return;
+      const n = parseInt(panoEl.dataset.panoP, 10);
+      const pkey = 'P' + n;
+      const nextPano = (prog.p_pano[pkey] || 0) + 1;
+      ts.pendingPkey = pkey;
+      ts.pendingIsPano = true;
+      ts.pendingFilename = filePrefix(s) + '_' + pkey + '-pano' + nextPano + '.jpg';
+      openCamera(function(file) {
+        ts.pendingFile = file;
+        fileToDataURL(file).then(function(url) { ts.pendingDataURL = url; redrawShoot(); });
+      });
+      return;
+    }
+    // 保存
+    if (e.target.closest('[data-kizon-save]')) {
+      if (!ts.pendingFile) return;
+      savePhoto(ts.pendingFile, ts.pendingFilename);
+      prog = loadProgress(key) || { p_done: {}, p_pano: {}, p_thumbs: {} };
+      if (!prog.p_done) prog.p_done = {};
+      if (!prog.p_pano) prog.p_pano = {};
+      if (!prog.p_thumbs) prog.p_thumbs = {};
+      if (ts.pendingIsPano) {
+        prog.p_pano[ts.pendingPkey] = (prog.p_pano[ts.pendingPkey] || 0) + 1;
+      } else {
+        prog.p_done[ts.pendingPkey] = true;
+        prog.p_thumbs[ts.pendingPkey] = ts.pendingDataURL;
+      }
+      saveProgress(key, prog);
+      showToast('保存：' + ts.pendingFilename);
+      ts.pendingFile = null; ts.pendingDataURL = null; ts.pendingFilename = null;
+      ts.pendingPkey = null; ts.pendingIsPano = false;
+      redrawShoot();
+      return;
+    }
+    // 撮り直し
+    if (e.target.closest('[data-kizon-retake]')) {
+      ts.pendingFile = null; ts.pendingDataURL = null; ts.pendingFilename = null;
+      ts.pendingPkey = null; ts.pendingIsPano = false;
+      redrawShoot();
+      return;
+    }
+    // P追加
+    if (e.target.closest('[data-add-p]')) {
+      const newN = getMaxP() + 1;
+      prog.p_done['P' + newN] = false;
+      saveProgress(key, prog);
+      redrawShoot();
+      return;
+    }
   }
 
-  function redraw() {
+  // 完了（新規・既存共通）
+  if (e.target.closest('[data-complete]')) {
+    confirmComplete();
+  }
+});
+
+// ===== 新規モード描画 =====
+function shinkiGetGPS(which, key, prog) {
+  const resultEl = document.getElementById('sh-gps-' + which + '-result');
+  const btnEl = document.getElementById('sh-gps-' + which + '-btn');
+  if (!resultEl || !btnEl) return;
+  btnEl.className = 'gps-btn loading';
+  btnEl.disabled = true;
+  resultEl.className = 'gps-result';
+  resultEl.textContent = '取得中…';
+  if (!navigator.geolocation) {
+    resultEl.textContent = 'GPS非対応';
+    resultEl.className = 'gps-result error';
+    btnEl.className = 'gps-btn'; btnEl.disabled = false; return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const acc = Math.round(pos.coords.accuracy);
+      if (which === 'start') prog.gps_start = { lat: lat, lon: lon };
+      else prog.gps_end = { lat: lat, lon: lon };
+      saveProgress(key, prog);
+      resultEl.textContent = lat.toFixed(6) + ', ' + lon.toFixed(6) + '（±' + acc + 'm）';
+      resultEl.className = 'gps-result';
+      btnEl.textContent = '再取得';
+      btnEl.className = 'gps-btn'; btnEl.disabled = false;
+    },
+    function(err) {
+      const msg = err.code === 1 ? '許可が必要です' : err.code === 3 ? 'タイムアウト' : '取得失敗';
+      resultEl.textContent = 'エラー：' + msg;
+      resultEl.className = 'gps-result error';
+      btnEl.className = 'gps-btn'; btnEl.disabled = false;
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+function renderShinkiMode() {
+  redrawShoot();
+}
+
+function renderKizonMode() {
+  redrawShoot();
+}
+
+// ===== 統合 redraw（現在のタブの内容を描画） =====
+function redrawShoot() {
+  const s = currentSite();
+  if (!s) return;
+  const key = s.no + '_' + s.kanai;
+  const ts = getTabState(key);
+
+  if (s.type === '新規') {
+    const prog = loadProgress(key) || { shinki_count: 0, thumbs: [] };
+    if (!prog.thumbs) prog.thumbs = [];
     const num = prog.shinki_count || 0;
-    const fn = nextFilename();
+    const fn = filePrefix(s) + '_' + String(num + 1).padStart(3, '0') + '.jpg';
+
+    const gpsStatusHtml = function(which) {
+      const data = which === 'start' ? prog.gps_start : prog.gps_end;
+      if (data) return data.lat.toFixed(6) + ', ' + data.lon.toFixed(6);
+      return '未取得';
+    };
 
     const gpsHtml = '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0;">'
       + '<div style="font-size:13px;font-weight:bold;color:#1a5c9a;margin-bottom:8px;">📍 GPS位置情報</div>'
@@ -1263,11 +1431,11 @@ function renderShinkiMode() {
     }
 
     let confirmHtml = '';
-    if (pendingDataURL) {
-      confirmHtml = '<div class="save-confirm-bar" id="save-bar">'
-        + '<img src="' + pendingDataURL + '">'
+    if (ts.pendingDataURL) {
+      confirmHtml = '<div class="save-confirm-bar">'
+        + '<img src="' + ts.pendingDataURL + '">'
         + '<div class="save-confirm-info">'
-        + '<div class="save-confirm-fname">' + pendingFilename + '</div>'
+        + '<div class="save-confirm-fname">' + ts.pendingFilename + '</div>'
         + '<div class="save-confirm-hint">保存してください</div>'
         + '</div>'
         + '<div class="save-confirm-btns">'
@@ -1286,86 +1454,19 @@ function renderShinkiMode() {
       + '</div></div>'
       + gpsHtml + thumbHtml + '</div>'
       + confirmHtml
-      + '<button class="shoot-btn-big" data-shinki-shoot="1"' + (pendingDataURL ? ' disabled style="opacity:.5"' : '') + '>📷　撮影（' + String(num + 1).padStart(3, '0') + '）</button>'
+      + '<button class="shoot-btn-big" data-shinki-shoot="1"' + (ts.pendingDataURL ? ' disabled style="opacity:.5"' : '') + '>📷　撮影（' + String(num + 1).padStart(3, '0') + '）</button>'
       + '<button class="complete-btn" data-complete="1">✔ この箇所を完了</button>';
-  }
 
-  // イベント委譲
-  document.getElementById('shoot-body').addEventListener('click', function(e) {
-    // GPS
-    const gpsBtn = e.target.closest('[data-shinki-gps]');
-    if (gpsBtn) { window.shinkiGetGPS(gpsBtn.dataset.shinkiGps); return; }
-    // 撮影
-    if (e.target.closest('[data-shinki-shoot]')) {
-      if (pendingDataURL) return;
-      pendingFilename = nextFilename();
-      openCamera(function(file) {
-        pendingFile = file;
-        fileToDataURL(file).then(function(url) { pendingDataURL = url; redraw(); });
-      });
-      return;
-    }
-    // 保存
-    if (e.target.closest('[data-shinki-save]')) {
-      if (!pendingFile) return;
-      savePhoto(pendingFile, pendingFilename);
-      prog.shinki_count = (prog.shinki_count || 0) + 1;
-      prog.thumbs.push({ filename: pendingFilename, dataURL: pendingDataURL });
-      saveProgress(key, prog);
-      showToast('保存：' + pendingFilename);
-      pendingFile = null; pendingDataURL = null; pendingFilename = null;
-      redraw();
-      return;
-    }
-    // 撮り直し
-    if (e.target.closest('[data-shinki-retake]')) {
-      pendingFile = null; pendingDataURL = null; pendingFilename = null;
-      redraw();
-      return;
-    }
-    // サムネイル削除
-    const delBtn = e.target.closest('[data-shinki-del]');
-    if (delBtn) {
-      const i = parseInt(delBtn.dataset.shinkiDel, 10);
-      prog.thumbs.splice(i, 1);
-      prog.shinki_count = prog.thumbs.length;
-      saveProgress(key, prog);
-      redraw();
-      return;
-    }
-    // 完了
-    if (e.target.closest('[data-complete]')) {
-      confirmComplete();
-    }
-  });
+  } else {
+    // 既存モード
+    const prog = loadProgress(key) || { p_done: {}, p_pano: {}, p_thumbs: {} };
+    if (!prog.p_done) prog.p_done = {};
+    if (!prog.p_pano) prog.p_pano = {};
+    if (!prog.p_thumbs) prog.p_thumbs = {};
 
-  redraw();
-}
+    const pkeys = Object.keys(prog.p_done);
+    const maxP = pkeys.length === 0 ? 3 : Math.max.apply(null, pkeys.map(function(k) { return parseInt(k.replace('P',''),10)||0; }).concat([3]));
 
-// ===== 既存モード =====
-function renderKizonMode() {
-  const s = currentSite();
-  const key = s.no + '_' + s.kanai;
-  let prog = loadProgress(key) || { p_done: {}, p_pano: {}, p_thumbs: {} };
-  if (!prog.p_done) prog.p_done = {};
-  if (!prog.p_pano) prog.p_pano = {};
-  if (!prog.p_thumbs) prog.p_thumbs = {};
-
-  let pendingFile = null;
-  let pendingDataURL = null;
-  let pendingFilename = null;
-  let pendingPkey = null;
-  let pendingIsPano = false;
-
-  function getMaxP() {
-    const keys = Object.keys(prog.p_done || {});
-    if (keys.length === 0) return 3;
-    const nums = keys.map(function(k) { return parseInt(k.replace('P', ''), 10); }).filter(function(n) { return !isNaN(n); });
-    return Math.max.apply(null, nums.concat([3]));
-  }
-
-  function redraw() {
-    const maxP = getMaxP();
     let gridHtml = '<div class="p-grid">';
     for (let i = 1; i <= maxP; i++) {
       const pkey = 'P' + i;
@@ -1391,11 +1492,11 @@ function renderKizonMode() {
     gridHtml += '</div>';
 
     let confirmHtml = '';
-    if (pendingDataURL) {
+    if (ts.pendingDataURL) {
       confirmHtml = '<div class="save-confirm-bar">'
-        + '<img src="' + pendingDataURL + '">'
+        + '<img src="' + ts.pendingDataURL + '">'
         + '<div class="save-confirm-info">'
-        + '<div class="save-confirm-fname">' + pendingFilename + '</div>'
+        + '<div class="save-confirm-fname">' + ts.pendingFilename + '</div>'
         + '<div class="save-confirm-hint">保存してください</div>'
         + '</div>'
         + '<div class="save-confirm-btns">'
@@ -1410,88 +1511,6 @@ function renderKizonMode() {
       + '<button class="add-p-btn" data-add-p="1">＋ P番号を追加</button>'
       + '<button class="complete-btn" data-complete="1">✔ この箇所を完了</button>';
   }
-
-  // イベント委譲
-  document.getElementById('shoot-body').addEventListener('click', function(e) {
-    // P番号タップ
-    const toggleEl = e.target.closest('[data-toggle-p]');
-    if (toggleEl) {
-      if (pendingDataURL) return;
-      const n = parseInt(toggleEl.dataset.toggleP, 10);
-      const pkey = 'P' + n;
-      if (prog.p_done[pkey]) {
-        // 取消
-        delete prog.p_done[pkey];
-        delete prog.p_pano[pkey];
-        delete prog.p_thumbs[pkey];
-        saveProgress(key, prog);
-        redraw();
-      } else {
-        pendingPkey = pkey;
-        pendingIsPano = false;
-        pendingFilename = filePrefix(s) + '_' + pkey + '.jpg';
-        openCamera(function(file) {
-          pendingFile = file;
-          fileToDataURL(file).then(function(url) { pendingDataURL = url; redraw(); });
-        });
-      }
-      return;
-    }
-    // パノラマ
-    const panoEl = e.target.closest('[data-pano-p]');
-    if (panoEl) {
-      if (pendingDataURL) return;
-      const n = parseInt(panoEl.dataset.panoP, 10);
-      const pkey = 'P' + n;
-      const nextPano = (prog.p_pano[pkey] || 0) + 1;
-      pendingPkey = pkey;
-      pendingIsPano = true;
-      pendingFilename = filePrefix(s) + '_' + pkey + '-pano' + nextPano + '.jpg';
-      openCamera(function(file) {
-        pendingFile = file;
-        fileToDataURL(file).then(function(url) { pendingDataURL = url; redraw(); });
-      });
-      return;
-    }
-    // 保存
-    if (e.target.closest('[data-kizon-save]')) {
-      if (!pendingFile) return;
-      savePhoto(pendingFile, pendingFilename);
-      if (pendingIsPano) {
-        prog.p_pano[pendingPkey] = (prog.p_pano[pendingPkey] || 0) + 1;
-      } else {
-        prog.p_done[pendingPkey] = true;
-        prog.p_thumbs[pendingPkey] = pendingDataURL;
-      }
-      saveProgress(key, prog);
-      showToast('保存：' + pendingFilename);
-      pendingFile = null; pendingDataURL = null; pendingFilename = null;
-      pendingPkey = null; pendingIsPano = false;
-      redraw();
-      return;
-    }
-    // 撮り直し
-    if (e.target.closest('[data-kizon-retake]')) {
-      pendingFile = null; pendingDataURL = null; pendingFilename = null;
-      pendingPkey = null; pendingIsPano = false;
-      redraw();
-      return;
-    }
-    // P追加
-    if (e.target.closest('[data-add-p]')) {
-      const newN = getMaxP() + 1;
-      prog.p_done['P' + newN] = false;
-      saveProgress(key, prog);
-      redraw();
-      return;
-    }
-    // 完了
-    if (e.target.closest('[data-complete]')) {
-      confirmComplete();
-    }
-  });
-
-  redraw();
 }
 
 // ===== 完了確認 =====
