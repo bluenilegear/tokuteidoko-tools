@@ -459,24 +459,32 @@
     padding: 3px;
   }
 
-  /* 撮影ボタン */
+  /* 撮影ボタン（右中央固定・でかく） */
   .shoot-btn-big {
-    width: 100%;
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
     background: #27ae60;
     color: white;
     border: none;
-    border-radius: 10px;
-    padding: 13px;
-    font-size: 16px;
+    border-radius: 16px 0 0 16px;
+    padding: 28px 16px;
+    font-size: 15px;
     font-weight: bold;
     cursor: pointer;
-    margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    z-index: 300;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.35);
+    writing-mode: vertical-rl;
+    letter-spacing: 4px;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    min-height: 140px;
   }
   .shoot-btn-big:active { background: #1e8449; }
+  .shoot-btn-big:disabled { background: #95a5a6; opacity: 0.7; }
+  /* 撮影ボタン分の右パディング */
+  .shoot-body { padding-right: 68px; }
 
   /* 保存確認パネル（画面右端に固定） */
   .save-confirm-bar {
@@ -494,37 +502,36 @@
     align-items: center;
     gap: 8px;
     z-index: 200;
-    width: 108px;
+    width: 140px;
     box-shadow: -4px 0 16px rgba(0,0,0,0.22);
   }
   .save-confirm-bar img {
-    width: 84px;
-    height: 84px;
+    width: 116px;
+    height: 116px;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: 8px;
     flex-shrink: 0;
   }
   .save-confirm-info { width: 100%; }
   .save-confirm-fname {
     font-family: monospace;
-    font-size: 9px;
+    font-size: 10px;
     color: #1a1a1a;
     font-weight: bold;
     word-break: break-all;
     line-height: 1.3;
   }
-  .save-confirm-hint { font-size: 9px; color: #888; margin-top: 2px; }
-  .save-confirm-btns { display: flex; flex-direction: column; gap: 5px; width: 100%; }
+  .save-confirm-hint { font-size: 10px; color: #888; margin-top: 2px; }
+  .save-confirm-btns { display: flex; flex-direction: column; gap: 6px; width: 100%; }
   .btn-save {
     background: #2980b9;
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 13px 4px;
-    font-size: 15px;
+    border-radius: 10px;
+    padding: 16px 6px;
+    font-size: 16px;
     font-weight: bold;
     cursor: pointer;
-    white-space: nowrap;
     width: 100%;
     text-align: center;
   }
@@ -533,9 +540,10 @@
     background: #bdc3c7;
     color: #333;
     border: none;
-    border-radius: 8px;
-    padding: 10px 4px;
-    font-size: 13px;
+    border-radius: 10px;
+    padding: 12px 6px;
+    font-size: 14px;
+    font-weight: bold;
     cursor: pointer;
     width: 100%;
     text-align: center;
@@ -1317,7 +1325,7 @@ function getTabState(key) {
 }
 
 // ===== shoot-body イベント（一度だけ登録） =====
-document.getElementById('shoot-body').addEventListener('click', function(e) {
+document.getElementById('shoot-screen').addEventListener('click', function(e) {
   const s = currentSite();
   if (!s) return;
   const key = s.no + '_' + s.kanai;
@@ -1507,6 +1515,12 @@ function shinkiGetGPS(which, key, prog) {
       resultEl.className = 'gps-result';
       btnEl.textContent = '再取得';
       btnEl.className = 'gps-btn'; btnEl.disabled = false;
+      // 両方取得済みならdetailsを閉じる
+      const p2 = loadProgress(key);
+      if (p2 && p2.gps_start && p2.gps_end) {
+        const det = resultEl.closest('details');
+        if (det) det.removeAttribute('open');
+      }
     },
     function(err) {
       const msg = err.code === 1 ? '許可が必要です' : err.code === 3 ? 'タイムアウト' : '取得失敗';
@@ -1552,8 +1566,17 @@ function redrawShoot() {
       return '未取得';
     };
 
-    const gpsHtml = '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0;">'
-      + '<div style="font-size:13px;font-weight:bold;color:#1a5c9a;margin-bottom:8px;">📍 GPS位置情報</div>'
+    // GPS取得済みか
+    const gpsStartDone = !!prog.gps_start;
+    const gpsEndDone = !!prog.gps_end;
+    const gpsBothDone = gpsStartDone && gpsEndDone;
+    // GPS欄：タップで展開する折りたたみ。常に閉じた状態から始まる
+    const gpsHtml = '<details style="background:#f8f9fa;border:1px solid #ddd;border-radius:10px;margin:8px 0;overflow:hidden;">'
+      + '<summary style="padding:10px 12px;font-size:13px;font-weight:bold;color:#1a5c9a;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;">'
+      + '📍 GPS位置情報'
+      + (gpsBothDone ? '<span style="color:#27ae60;font-size:12px;margin-left:4px;">✓ 両点取得済</span>' : '<span style="color:#e74c3c;font-size:12px;margin-left:4px;">▶ タップして取得</span>')
+      + '</summary>'
+      + '<div style="padding:10px 12px 12px;">'
       + '<div class="gps-row" style="margin-bottom:6px;">'
       + '<button class="gps-btn" id="sh-gps-start-btn" data-shinki-gps="start">' + (prog.gps_start ? '再取得' : '起点を取得') + '</button>'
       + '<div class="gps-result" id="sh-gps-start-result">' + gpsStatusHtml('start') + '</div>'
@@ -1561,7 +1584,7 @@ function redrawShoot() {
       + '<div class="gps-row">'
       + '<button class="gps-btn" id="sh-gps-end-btn" data-shinki-gps="end">' + (prog.gps_end ? '再取得' : '終点を取得') + '</button>'
       + '<div class="gps-result" id="sh-gps-end-result">' + gpsStatusHtml('end') + '</div>'
-      + '</div></div>';
+      + '</div></div></details>';
 
     let thumbHtml = '';
     if (prog.thumbs.length > 0) {
@@ -1585,8 +1608,8 @@ function redrawShoot() {
         + '<div class="save-confirm-hint">保存してください</div>'
         + '</div>'
         + '<div class="save-confirm-btns">'
-        + '<button class="btn-save" data-shinki-save="1" style="padding:14px 4px;font-size:16px;border-radius:8px;">💾 保存</button>'
-        + '<button class="btn-retake" data-shinki-retake="1" style="padding:11px 4px;font-size:13px;border-radius:8px;">撮り直し</button>'
+        + '<button class="btn-save" data-shinki-save="1">💾 保存</button>'
+        + '<button class="btn-retake" data-shinki-retake="1">撮り直し</button>'
         + '</div></div>';
     }
 
@@ -1601,8 +1624,19 @@ function redrawShoot() {
       + gpsHtml + '</div>'
       + thumbHtml
       + confirmHtml
-      + '<button class="shoot-btn-big" data-shinki-shoot="1"' + (ts.pendingDataURL ? ' disabled style="opacity:.5"' : '') + '>📷　撮影（' + String(num + 1).padStart(3, '0') + '）</button>'
       + '<button class="complete-btn" data-complete="1">✔ この箇所を完了</button>';
+    // 撮影ボタンを固定ボタンとして配置（shoot-bodyの外）
+    var oldShootBtn = document.getElementById('fixed-shoot-btn');
+    if (oldShootBtn) oldShootBtn.remove();
+    var shootBtn = document.createElement('button');
+    shootBtn.id = 'fixed-shoot-btn';
+    shootBtn.className = 'shoot-btn-big';
+    shootBtn.setAttribute('data-shinki-shoot', '1');
+    if (ts.pendingDataURL) shootBtn.disabled = true;
+    shootBtn.innerHTML = '📷<br>撮影<br>' + String(num + 1).padStart(3, '0');
+    shootBtn.style.writingMode = 'vertical-rl';
+    shootBtn.style.letterSpacing = '4px';
+    document.getElementById('shoot-screen').appendChild(shootBtn);
 
   } else {
     // 既存モード
@@ -1647,8 +1681,8 @@ function redrawShoot() {
         + '<div class="save-confirm-hint">保存してください</div>'
         + '</div>'
         + '<div class="save-confirm-btns">'
-        + '<button class="btn-save" data-kizon-save="1" style="padding:14px 4px;font-size:16px;border-radius:8px;">💾 保存</button>'
-        + '<button class="btn-retake" data-kizon-retake="1" style="padding:11px 4px;font-size:13px;border-radius:8px;">撮り直し</button>'
+        + '<button class="btn-save" data-kizon-save="1">💾 保存</button>'
+        + '<button class="btn-retake" data-kizon-retake="1">撮り直し</button>'
         + '</div></div>';
     }
 
@@ -1657,6 +1691,9 @@ function redrawShoot() {
       + gridHtml + confirmHtml
       + '<button class="add-p-btn" data-add-p="1">＋ P番号を追加</button>'
       + '<button class="complete-btn" data-complete="1">✔ この箇所を完了</button>';
+    // 既存モードでは固定撮影ボタンを削除
+    var oldShootBtn2 = document.getElementById('fixed-shoot-btn');
+    if (oldShootBtn2) oldShootBtn2.remove();
   }
 }
 
@@ -1894,6 +1931,9 @@ function goBack() {
   openSites = [];
   currentTabIdx = 0;
   try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
+  // 固定撮影ボタンを削除
+  var sb = document.getElementById('fixed-shoot-btn');
+  if (sb) sb.remove();
   document.getElementById('shoot-screen').style.display = 'none';
   document.getElementById('home-screen').style.display = 'block';
   renderSiteList(allSites);
