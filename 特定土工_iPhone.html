@@ -358,7 +358,7 @@
   /* 撮影本体 */
   .shoot-body { padding: 8px 12px; }
   /* 保存パネルが出ているとき右端を避ける */
-  .shoot-body.has-pending { padding-right: 100px; }
+  .shoot-body.has-pending { padding-right: 118px; }
 
   /* ===== 新規モード ===== */
   .shinki-panel {
@@ -487,19 +487,19 @@
     background: #fef9e7;
     border: 2px solid #f39c12;
     border-right: none;
-    border-radius: 12px 0 0 12px;
-    padding: 10px 10px 10px 12px;
+    border-radius: 14px 0 0 14px;
+    padding: 12px 10px 12px 14px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
     z-index: 200;
-    width: 90px;
-    box-shadow: -3px 0 12px rgba(0,0,0,0.18);
+    width: 108px;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.22);
   }
   .save-confirm-bar img {
-    width: 68px;
-    height: 68px;
+    width: 84px;
+    height: 84px;
     object-fit: cover;
     border-radius: 6px;
     flex-shrink: 0;
@@ -519,9 +519,9 @@
     background: #2980b9;
     color: white;
     border: none;
-    border-radius: 7px;
-    padding: 9px 4px;
-    font-size: 13px;
+    border-radius: 8px;
+    padding: 13px 4px;
+    font-size: 15px;
     font-weight: bold;
     cursor: pointer;
     white-space: nowrap;
@@ -533,9 +533,9 @@
     background: #bdc3c7;
     color: #333;
     border: none;
-    border-radius: 7px;
-    padding: 7px 4px;
-    font-size: 11px;
+    border-radius: 8px;
+    padding: 10px 4px;
+    font-size: 13px;
     cursor: pointer;
     width: 100%;
     text-align: center;
@@ -892,31 +892,44 @@ function filePrefix(site) {
 }
 
 // ===== カメラ =====
+// iOS Safariはfile inputを同一要素で繰り返しclickすると2回目以降を無視する。
+// formタグで包んでreset()し、毎回フォームごと作り直すことで確実に起動する。
 function openCamera(onShot) {
-  // iOSではJS経由の.click()が2回目以降無視される場合があるため、
-  // inputとlabelを毎回作り直してlabel.click()で起動する
-  ['camera-input','camera-label'].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el) el.remove();
-  });
-  const input = document.createElement('input');
+  // 古い要素をすべて削除
+  var old = document.getElementById('camera-form-wrap');
+  if (old) old.remove();
+
+  var wrap = document.createElement('div');
+  wrap.id = 'camera-form-wrap';
+  wrap.style.cssText = 'position:fixed;top:-999px;left:-999px;width:1px;height:1px;overflow:hidden;';
+
+  var form = document.createElement('form');
+  form.style.cssText = 'margin:0;padding:0;';
+
+  var input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
   input.setAttribute('capture', 'environment');
-  input.id = 'camera-input';
-  input.style.cssText = 'position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0;';
-  const label = document.createElement('label');
-  label.id = 'camera-label';
-  label.htmlFor = 'camera-input';
-  label.style.cssText = 'position:fixed;top:-999px;left:-999px;width:1px;height:1px;';
-  document.body.appendChild(input);
-  document.body.appendChild(label);
+  input.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;';
+
   input.addEventListener('change', function(e) {
-    const file = e.target.files && e.target.files[0];
+    var file = e.target.files && e.target.files[0];
     if (!file) return;
+    // 次回のためにフォームをリセット（iOS Safari のキャッシュ対策）
+    form.reset();
     onShot(file);
   });
-  label.click();
+
+  form.appendChild(input);
+  wrap.appendChild(form);
+  document.body.appendChild(wrap);
+
+  // rAFで2フレーム待ってからクリック（DOM追加直後のクリックを避ける）
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      input.click();
+    });
+  });
 }
 
 // ===== セッション復元（リロード対策） =====
