@@ -866,16 +866,23 @@ function filePrefix(site) {
 }
 
 // ===== カメラ =====
-document.getElementById('camera-input').addEventListener('change', function(e) {
-  const file = e.target.files && e.target.files[0];
-  e.target.value = '';
-  if (!file) return;
-  if (typeof window._onCameraShot === 'function') window._onCameraShot(file);
-});
-
 function openCamera(onShot) {
-  window._onCameraShot = onShot;
-  document.getElementById('camera-input').click();
+  // iOSでは同じinput要素の連続使用でchangeが発火しないため毎回作り直す
+  const old = document.getElementById('camera-input');
+  if (old) old.remove();
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.id = 'camera-input';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    onShot(file);
+  });
+  input.click();
 }
 
 // ===== 起動 =====
