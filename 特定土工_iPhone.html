@@ -23,7 +23,7 @@
   }
   .search-box {
     background: white;
-    padding: 10px 12px;
+    padding: 10px 12px 6px;
     border-bottom: 1px solid #ddd;
     position: sticky;
     top: 0;
@@ -36,7 +36,38 @@
     border: 1px solid #ccc;
     border-radius: 8px;
     background: #f8f8f8;
+    margin-bottom: 6px;
   }
+
+  /* 管内フィルターボタン */
+  .kanai-filter {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 0 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .kanai-filter::-webkit-scrollbar { display: none; }
+  .kf-btn {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 2px solid #1a5c9a;
+    background: white;
+    color: #1a5c9a;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+  }
+  .kf-btn.active {
+    background: #1a5c9a;
+    color: white;
+  }
+  .kf-btn:active { opacity: 0.7; }
+
   .kanai-group { margin-bottom: 2px; }
   .kanai-header {
     background: #2c7bb6;
@@ -255,6 +286,41 @@
     text-align: center;
   }
   .shoot-kanai { font-size: 12px; font-weight: normal; opacity: 0.8; }
+
+  /* ===== 箇所タブ ===== */
+  .site-tabs-bar {
+    background: #154d82;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-bottom: 2px solid #0d3a63;
+  }
+  .site-tabs-bar::-webkit-scrollbar { display: none; }
+  .site-tab {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: bold;
+    color: rgba(255,255,255,0.65);
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 3px solid transparent;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+  }
+  .site-tab.active {
+    color: white;
+    border-bottom-color: #ffd600;
+  }
+  .site-tab-add {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 16px;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+  }
+  .site-tab-add:active { color: white; }
 
   /* 箇所情報パネル */
   .site-info-panel {
@@ -600,6 +666,43 @@
     margin: 20px auto;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* 箇所選択モーダル（タブ追加用） */
+  .site-picker-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 600;
+    display: flex; align-items: flex-end;
+  }
+  .site-picker-sheet {
+    background: white;
+    width: 100%;
+    max-height: 80vh;
+    border-radius: 16px 16px 0 0;
+    overflow-y: auto;
+    padding: 0 0 32px;
+  }
+  .site-picker-search {
+    position: sticky; top: 0; background: white;
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+  }
+  .site-picker-search input {
+    width: 100%; padding: 8px 12px;
+    font-size: 15px; border: 1px solid #ccc;
+    border-radius: 8px; background: #f8f8f8;
+  }
+  .site-picker-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+  }
+  .site-picker-item:active { background: #e8f0fa; }
+  .site-picker-item.already-open {
+    background: #f5f5f5;
+    opacity: 0.5;
+  }
 </style>
 </head>
 <body>
@@ -615,19 +718,22 @@
 <div id="home-screen" style="display:none;">
   <div class="home-header">特定土工</div>
   <div class="search-box">
-    <input type="search" id="search-input" placeholder="箇所名・No.で絞り込み" oninput="filterSites()">
+    <input type="search" id="search-input" placeholder="箇所名・No.で絞り込み">
+    <div class="kanai-filter" id="kanai-filter">
+      <!-- 管内フィルターボタンがここに入る -->
+    </div>
   </div>
-  <button class="add-site-btn" onclick="showAddSite()">＋　新規箇所を追加</button>
-  <button class="history-btn" onclick="showHistory()">📋　完了履歴を見る</button>
+  <button class="add-site-btn" id="add-site-btn">＋　新規箇所を追加</button>
+  <button class="history-btn" id="history-btn">📋　完了履歴を見る</button>
   <div id="site-list"></div>
 </div>
 
 <!-- 箇所追加モーダル -->
-<div class="modal-overlay" id="addsite-modal" style="display:none;" onclick="hideAddSite(event)">
+<div class="modal-overlay" id="addsite-modal" style="display:none;">
   <div class="modal-sheet">
     <div class="modal-header">
       <span class="modal-title">＋ 新規箇所を追加</span>
-      <button class="modal-close" onclick="hideAddSite()">✕</button>
+      <button class="modal-close" id="addsite-close">✕</button>
     </div>
     <div class="add-form">
       <div class="add-form-row">
@@ -657,11 +763,10 @@
           </select>
         </div>
       </div>
-
       <div class="add-form-row">
         <label class="add-form-label">📍 起点 GPS</label>
         <div class="gps-row">
-          <button class="gps-btn" onclick="getGPS('start')">現在地を取得</button>
+          <button class="gps-btn" id="gps-start-btn">現在地を取得</button>
           <div class="gps-result" id="gps-start-result">未取得</div>
         </div>
         <input class="add-form-input" id="af-start-kp" type="number" step="0.001" placeholder="起点 kp（例：212.541）" style="margin-top:6px;">
@@ -669,26 +774,39 @@
       <div class="add-form-row">
         <label class="add-form-label">📍 終点 GPS</label>
         <div class="gps-row">
-          <button class="gps-btn" onclick="getGPS('end')">現在地を取得</button>
+          <button class="gps-btn" id="gps-end-btn">現在地を取得</button>
           <div class="gps-result" id="gps-end-result">未取得</div>
         </div>
         <input class="add-form-input" id="af-end-kp" type="number" step="0.001" placeholder="終点 kp（例：212.561）" style="margin-top:6px;">
       </div>
       <div id="af-distance-preview" style="font-size:13px;color:#1a5c9a;text-align:center;padding:4px 0 8px;"></div>
-
-      <button class="add-submit-btn" onclick="submitAddSite()">追加する</button>
+      <button class="add-submit-btn" id="add-submit-btn">追加する</button>
     </div>
   </div>
 </div>
 
 <!-- 完了履歴モーダル -->
-<div class="modal-overlay" id="history-modal" style="display:none;" onclick="hideHistory(event)">
+<div class="modal-overlay" id="history-modal" style="display:none;">
   <div class="modal-sheet">
     <div class="modal-header">
       <span class="modal-title">📋 完了履歴</span>
-      <button class="modal-close" onclick="hideHistory()">✕</button>
+      <button class="modal-close" id="history-close">✕</button>
     </div>
     <div id="history-body"></div>
+  </div>
+</div>
+
+<!-- 箇所選択モーダル（タブ追加用） -->
+<div class="site-picker-overlay" id="site-picker" style="display:none;">
+  <div class="site-picker-sheet">
+    <div class="modal-header">
+      <span class="modal-title">箇所を追加</span>
+      <button class="modal-close" id="site-picker-close">✕</button>
+    </div>
+    <div class="site-picker-search">
+      <input type="search" id="picker-search" placeholder="箇所名・No.で絞り込み">
+    </div>
+    <div id="picker-list"></div>
   </div>
 </div>
 
@@ -696,11 +814,15 @@
 <div id="shoot-screen" style="display:none;">
   <div class="shoot-header">
     <div class="shoot-header-top">
-      <button class="back-btn" onclick="goBack()">◀ 戻る</button>
-      <div class="shoot-title">
+      <button class="back-btn" id="back-btn">◀ 戻る</button>
+      <div class="shoot-title" id="shoot-title-area">
         <div class="shoot-kanai" id="sh-kanai"></div>
         <div id="sh-no-name"></div>
       </div>
+    </div>
+    <!-- 箇所タブ（複数箇所時に表示） -->
+    <div class="site-tabs-bar" id="site-tabs-bar" style="display:none;">
+      <!-- タブがここに入る -->
     </div>
     <div class="site-info-panel" id="site-info-panel"></div>
   </div>
@@ -717,27 +839,33 @@
 const JSON_URL = 'https://raw.githubusercontent.com/bluenilegear/tokuteidoko-tools/main/kasho-list.json';
 
 let allSites = [];
-let currentSite = null;
 let toastTimer = null;
+
+// ===== 複数箇所タブ管理 =====
+let openSites = [];     // 開いている箇所の配列 [{no, kanai}, ...]
+let currentTabIdx = 0;  // 現在のタブインデックス
+
+function currentSite() {
+  if (openSites.length === 0) return null;
+  const ref = openSites[currentTabIdx];
+  return allSites.find(s => s.no === ref.no && s.kanai === ref.kanai) || null;
+}
 
 // ===== 管内略称（ファイル名に使用） =====
 function kanaiAbbr(kanai) {
   if (kanai.includes('雪崩')) return '神岡雪崩';
   if (kanai.includes('落石') || kanai.includes('落防')) return '神岡落石';
-  if (kanai.includes('神岡')) return '神岡落石'; // 神岡管内のその他
+  if (kanai.includes('神岡')) return '神岡落石';
   if (kanai.includes('下呂')) return '下呂';
   if (kanai.includes('高山')) return '高山';
-  // 上記にマッチしない場合：管内名から「管内」を除いた先頭4文字
   return kanai.replace('管内', '').replace(/[（(）)]/g, '').slice(0, 4);
 }
 
-// ファイル名プレフィックス（略称_No）
 function filePrefix(site) {
-  return `${kanaiAbbr(site.kanai)}_${site.no}`;
+  return kanaiAbbr(site.kanai) + '_' + site.no;
 }
 
 // ===== カメラ =====
-// 撮影後のファイルをBlobとして保持し、保存確認UIへ渡す
 document.getElementById('camera-input').addEventListener('change', function(e) {
   const file = e.target.files && e.target.files[0];
   e.target.value = '';
@@ -755,18 +883,20 @@ async function init() {
   try {
     const res = await fetch(JSON_URL + '?_=' + Date.now());
     const data = await res.json();
-    allSites = [...data.sites, ...loadUserSites()];
+    allSites = data.sites.concat(loadUserSites());
     document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('home-screen').style.display = 'block';
+    renderKanaiFilter();
     renderSiteList(allSites);
   } catch(e) {
     document.getElementById('loading-msg').textContent = '読み込み失敗。オフライン？';
     try {
       const res2 = await fetch(JSON_URL);
       const data2 = await res2.json();
-      allSites = [...data2.sites, ...loadUserSites()];
+      allSites = data2.sites.concat(loadUserSites());
       document.getElementById('loading-screen').style.display = 'none';
       document.getElementById('home-screen').style.display = 'block';
+      renderKanaiFilter();
       renderSiteList(allSites);
     } catch(e2) {
       document.getElementById('loading-msg').textContent = 'ネットワークエラー。Wi-Fiを確認してください。';
@@ -774,96 +904,239 @@ async function init() {
   }
 }
 
+// ===== 管内フィルター =====
+let activeKanai = null; // null = 全て
+
+function getKanaiList() {
+  const seen = {};
+  const list = [];
+  allSites.forEach(function(s) {
+    if (!seen[s.kanai]) { seen[s.kanai] = true; list.push(s.kanai); }
+  });
+  return list;
+}
+
+function renderKanaiFilter() {
+  const kanaiList = getKanaiList();
+  const bar = document.getElementById('kanai-filter');
+  let html = '<button class="kf-btn' + (activeKanai === null ? ' active' : '') + '" data-kanai="">全て</button>';
+  kanaiList.forEach(function(k) {
+    const isActive = activeKanai === k;
+    // 管内名を短縮表示
+    const short = k.replace('管内', '').replace(/[（(）)]/g, '');
+    html += '<button class="kf-btn' + (isActive ? ' active' : '') + '" data-kanai="' + k + '">' + short + '</button>';
+  });
+  bar.innerHTML = html;
+}
+
+document.getElementById('kanai-filter').addEventListener('click', function(e) {
+  const btn = e.target.closest('.kf-btn');
+  if (!btn) return;
+  activeKanai = btn.dataset.kanai || null;
+  renderKanaiFilter();
+  filterSites();
+});
+
 // ===== ホーム描画 =====
 function renderSiteList(sites) {
   const container = document.getElementById('site-list');
   const groups = {};
   const order = [];
-  sites.forEach(s => {
+  sites.forEach(function(s) {
     if (!groups[s.kanai]) { groups[s.kanai] = []; order.push(s.kanai); }
     groups[s.kanai].push(s);
   });
   let html = '';
-  order.forEach(kanai => {
-    html += `<div class="kanai-group"><div class="kanai-header">${kanai}</div>`;
-    groups[kanai].forEach(s => {
+  order.forEach(function(kanai) {
+    html += '<div class="kanai-group"><div class="kanai-header">' + kanai + '</div>';
+    groups[kanai].forEach(function(s) {
       const noClass = s.type === '新規' ? 'site-no shinki' : 'site-no';
-      const kpText = s.start_kp != null ? `${s.start_kp}kp〜${s.end_kp}kp（${s.distance_m}m）` : '距離標未登録';
+      const kpText = s.start_kp != null ? s.start_kp + 'kp〜' + s.end_kp + 'kp（' + s.distance_m + 'm）' : '距離標未登録';
       const saved = loadProgress(s.no + '_' + s.kanai);
       const isCompleted = saved && saved.completed;
-      const doneCount = saved ? (saved.shinki_count || (saved.p_done ? Object.keys(saved.p_done).filter(k=>saved.p_done[k]).length : 0)) : 0;
-      const countBadge = doneCount > 0 && !isCompleted ? `<span style="font-size:12px;color:#27ae60;margin-left:4px;">✓${doneCount}枚</span>` : '';
+      const doneCount = saved ? (saved.shinki_count || (saved.p_done ? Object.keys(saved.p_done).filter(function(k){ return saved.p_done[k]; }).length : 0)) : 0;
+      const countBadge = doneCount > 0 && !isCompleted ? '<span style="font-size:12px;color:#27ae60;margin-left:4px;">✓' + doneCount + '枚</span>' : '';
       const itemClass = isCompleted ? 'site-item completed' : 'site-item';
-      const rightIcon = isCompleted
-        ? `<span class="site-done-badge">✅</span>`
-        : `<span class="site-arrow">›</span>`;
-      html += `<div class="${itemClass}" onclick="selectSite('${encodeURIComponent(s.no + '_' + s.kanai)}')">
-        <span class="${noClass}">${s.no}</span>
-        <div class="site-name-wrap">
-          <div class="site-name">${s.name}${countBadge}</div>
-          <div class="site-kp">${kpText}</div>
-        </div>
-        ${rightIcon}
-      </div>`;
+      const rightIcon = isCompleted ? '<span class="site-done-badge">✅</span>' : '<span class="site-arrow">›</span>';
+      const encKey = encodeURIComponent(s.no + '|||' + s.kanai);
+      html += '<div class="' + itemClass + '" data-select-site="' + encKey + '">'
+        + '<span class="' + noClass + '">' + s.no + '</span>'
+        + '<div class="site-name-wrap">'
+        + '<div class="site-name">' + s.name + countBadge + '</div>'
+        + '<div class="site-kp">' + kpText + '</div>'
+        + '</div>'
+        + rightIcon
+        + '</div>';
     });
     html += '</div>';
   });
   container.innerHTML = html;
 }
 
+document.getElementById('site-list').addEventListener('click', function(e) {
+  const item = e.target.closest('[data-select-site]');
+  if (!item) return;
+  const decoded = decodeURIComponent(item.dataset.selectSite);
+  const parts = decoded.split('|||');
+  selectSite(parts[0], parts[1]);
+});
+
 function filterSites() {
   const q = document.getElementById('search-input').value.trim().toLowerCase();
-  if (!q) { renderSiteList(allSites); return; }
-  const filtered = allSites.filter(s =>
-    s.name.toLowerCase().includes(q) || s.no.toLowerCase().includes(q) || s.kanai.toLowerCase().includes(q)
-  );
+  let filtered = allSites;
+  if (activeKanai) filtered = filtered.filter(function(s) { return s.kanai === activeKanai; });
+  if (q) filtered = filtered.filter(function(s) {
+    return s.name.toLowerCase().includes(q) || s.no.toLowerCase().includes(q) || s.kanai.toLowerCase().includes(q);
+  });
   renderSiteList(filtered);
 }
 
-// ===== 箇所選択 =====
-function selectSite(key) {
-  const decoded = decodeURIComponent(key);
-  const idx = decoded.indexOf('_');
-  const no = decoded.slice(0, idx);
-  const kanai = decoded.slice(idx + 1);
-  currentSite = allSites.find(s => s.no === no && s.kanai === kanai);
-  if (!currentSite) return;
+document.getElementById('search-input').addEventListener('input', filterSites);
+
+// ===== 箇所選択（一覧から） =====
+function selectSite(no, kanai) {
+  const site = allSites.find(function(s) { return s.no === no && s.kanai === kanai; });
+  if (!site) return;
+  // すでに開いているか確認
+  const existIdx = openSites.findIndex(function(r) { return r.no === no && r.kanai === kanai; });
+  if (existIdx >= 0) {
+    currentTabIdx = existIdx;
+  } else {
+    openSites.push({ no: no, kanai: kanai });
+    currentTabIdx = openSites.length - 1;
+  }
   renderShootScreen();
 }
 
 // ===== 撮影画面 =====
 function renderShootScreen() {
-  const s = currentSite;
+  const s = currentSite();
+  if (!s) return;
   document.getElementById('home-screen').style.display = 'none';
   document.getElementById('shoot-screen').style.display = 'block';
-  document.getElementById('sh-kanai').textContent = s.kanai;
-  document.getElementById('sh-no-name').textContent = `No.${s.no}　${s.name}`;
 
-  let infoHtml = `<div class="info-row">
-    <span class="info-label">名称</span>
-    <span class="info-value">${s.name}<span class="info-badge${s.type==='新規'?' shinki':''}">${s.type}</span></span>
-  </div>`;
+  // タブバー
+  renderSiteTabs();
+
+  // ヘッダー
+  document.getElementById('sh-kanai').textContent = s.kanai;
+  document.getElementById('sh-no-name').textContent = 'No.' + s.no + '　' + s.name;
+
+  let infoHtml = '<div class="info-row"><span class="info-label">名称</span><span class="info-value">' + s.name + '<span class="info-badge' + (s.type === '新規' ? ' shinki' : '') + '">' + s.type + '</span></span></div>';
   if (s.start_kp != null) {
-    infoHtml += `<div class="info-row">
-      <span class="info-label">距離標</span>
-      <span class="info-value">起点 ${s.start_kp}kp〜終点 ${s.end_kp}kp</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">区間距離</span>
-      <span class="info-value" style="color:#1a5c9a;font-weight:bold;">${s.distance_m} m</span>
-    </div>`;
+    infoHtml += '<div class="info-row"><span class="info-label">距離標</span><span class="info-value">起点 ' + s.start_kp + 'kp〜終点 ' + s.end_kp + 'kp</span></div>'
+      + '<div class="info-row"><span class="info-label">区間距離</span><span class="info-value" style="color:#1a5c9a;font-weight:bold;">' + s.distance_m + ' m</span></div>';
   } else {
-    infoHtml += `<div class="info-row"><span class="info-label">距離標</span><span class="info-value" style="color:#999;">未登録</span></div>`;
+    infoHtml += '<div class="info-row"><span class="info-label">距離標</span><span class="info-value" style="color:#999;">未登録</span></div>';
   }
-  infoHtml += `<div class="info-row"><span class="info-label">方向</span><span class="info-value">${s.direction || '―'}</span></div>`;
+  infoHtml += '<div class="info-row"><span class="info-label">方向</span><span class="info-value">' + (s.direction || '―') + '</span></div>';
   document.getElementById('site-info-panel').innerHTML = infoHtml;
 
   if (s.type === '新規') renderShinkiMode();
   else renderKizonMode();
 }
 
+// ===== タブバー描画 =====
+function renderSiteTabs() {
+  const bar = document.getElementById('site-tabs-bar');
+  if (openSites.length <= 1) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  let html = '';
+  openSites.forEach(function(ref, idx) {
+    const site = allSites.find(function(s) { return s.no === ref.no && s.kanai === ref.kanai; });
+    const label = site ? 'No.' + site.no : ref.no;
+    const cls = idx === currentTabIdx ? 'site-tab active' : 'site-tab';
+    html += '<div class="' + cls + '" data-tab-idx="' + idx + '">' + label + '</div>';
+  });
+  html += '<div class="site-tab-add" data-tab-add="1">＋</div>';
+  bar.innerHTML = html;
+}
+
+document.getElementById('site-tabs-bar').addEventListener('click', function(e) {
+  const tab = e.target.closest('[data-tab-idx]');
+  if (tab) {
+    const idx = parseInt(tab.dataset.tabIdx, 10);
+    if (idx !== currentTabIdx) {
+      currentTabIdx = idx;
+      renderShootScreen();
+    }
+    return;
+  }
+  const addBtn = e.target.closest('[data-tab-add]');
+  if (addBtn) {
+    showSitePicker();
+  }
+});
+
+// ===== 箇所ピッカー（タブ追加用） =====
+function showSitePicker() {
+  document.getElementById('picker-search').value = '';
+  renderPickerList('');
+  document.getElementById('site-picker').style.display = 'flex';
+}
+
+function renderPickerList(q) {
+  let filtered = allSites;
+  if (q) filtered = filtered.filter(function(s) {
+    return s.name.toLowerCase().includes(q) || s.no.toLowerCase().includes(q);
+  });
+  const groups = {};
+  const order = [];
+  filtered.forEach(function(s) {
+    if (!groups[s.kanai]) { groups[s.kanai] = []; order.push(s.kanai); }
+    groups[s.kanai].push(s);
+  });
+  let html = '';
+  order.forEach(function(kanai) {
+    html += '<div class="kanai-header" style="font-size:12px;padding:6px 16px;">' + kanai + '</div>';
+    groups[kanai].forEach(function(s) {
+      const alreadyOpen = openSites.some(function(r) { return r.no === s.no && r.kanai === s.kanai; });
+      const noClass = s.type === '新規' ? 'site-no shinki' : 'site-no';
+      const cls = alreadyOpen ? 'site-picker-item already-open' : 'site-picker-item';
+      const encKey = encodeURIComponent(s.no + '|||' + s.kanai);
+      html += '<div class="' + cls + '" data-pick-site="' + encKey + '">'
+        + '<span class="' + noClass + '">' + s.no + '</span>'
+        + '<span style="font-size:14px;color:#222;">' + s.name + '</span>'
+        + (alreadyOpen ? '<span style="font-size:11px;color:#aaa;margin-left:auto;">開いています</span>' : '')
+        + '</div>';
+    });
+  });
+  document.getElementById('picker-list').innerHTML = html;
+}
+
+document.getElementById('picker-list').addEventListener('click', function(e) {
+  const item = e.target.closest('[data-pick-site]');
+  if (!item) return;
+  const decoded = decodeURIComponent(item.dataset.pickSite);
+  const parts = decoded.split('|||');
+  const no = parts[0];
+  const kanai = parts[1];
+  const alreadyOpen = openSites.some(function(r) { return r.no === no && r.kanai === kanai; });
+  if (alreadyOpen) return;
+  openSites.push({ no: no, kanai: kanai });
+  currentTabIdx = openSites.length - 1;
+  document.getElementById('site-picker').style.display = 'none';
+  renderShootScreen();
+});
+
+document.getElementById('picker-search').addEventListener('input', function(e) {
+  renderPickerList(e.target.value.trim().toLowerCase());
+});
+
+document.getElementById('site-picker-close').addEventListener('click', function() {
+  document.getElementById('site-picker').style.display = 'none';
+});
+
+document.getElementById('site-picker').addEventListener('click', function(e) {
+  if (e.target === document.getElementById('site-picker')) {
+    document.getElementById('site-picker').style.display = 'none';
+  }
+});
+
 // ===== 保存ヘルパー =====
-// Blobをファイル名付きでダウンロード保存（iPhoneの「ファイル」アプリ or 写真に保存）
 function savePhoto(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -871,10 +1144,9 @@ function savePhoto(blob, filename) {
   a.download = filename;
   document.body.appendChild(a);
   a.click();
-  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  setTimeout(function() { URL.revokeObjectURL(url); a.remove(); }, 1000);
 }
 
-// ===== DataURL → Blob =====
 function dataURLtoBlob(dataURL) {
   const arr = dataURL.split(',');
   const mime = arr[0].match(/:(.*?);/)[1];
@@ -885,34 +1157,31 @@ function dataURLtoBlob(dataURL) {
   return new Blob([u8arr], { type: mime });
 }
 
-// FileオブジェクトをDataURLに変換
 function fileToDataURL(file) {
-  return new Promise(resolve => {
+  return new Promise(function(resolve) {
     const r = new FileReader();
-    r.onload = e => resolve(e.target.result);
+    r.onload = function(e) { resolve(e.target.result); };
     r.readAsDataURL(file);
   });
 }
 
 // ===== 新規モード =====
 function renderShinkiMode() {
-  const s = currentSite;
+  const s = currentSite();
   const key = s.no + '_' + s.kanai;
   let prog = loadProgress(key) || { shinki_count: 0, thumbs: [] };
   if (!prog.thumbs) prog.thumbs = [];
-  // 保存待ち状態
   let pendingFile = null;
   let pendingDataURL = null;
   let pendingFilename = null;
 
   function nextFilename() {
-    return `${filePrefix(s)}_${String((prog.shinki_count || 0) + 1).padStart(3,'0')}.jpg`;
+    return filePrefix(s) + '_' + String((prog.shinki_count || 0) + 1).padStart(3, '0') + '.jpg';
   }
 
-  // GPS取得（新規モード内）
   window.shinkiGetGPS = function(which) {
-    const resultEl = document.getElementById(`sh-gps-${which}-result`);
-    const btnEl = document.getElementById(`sh-gps-${which}-btn`);
+    const resultEl = document.getElementById('sh-gps-' + which + '-result');
+    const btnEl = document.getElementById('sh-gps-' + which + '-btn');
     if (!resultEl || !btnEl) return;
     btnEl.className = 'gps-btn loading';
     btnEl.disabled = true;
@@ -924,21 +1193,21 @@ function renderShinkiMode() {
       btnEl.className = 'gps-btn'; btnEl.disabled = false; return;
     }
     navigator.geolocation.getCurrentPosition(
-      pos => {
+      function(pos) {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
         const acc = Math.round(pos.coords.accuracy);
-        const data = { lat, lon };
-        if (which === 'start') prog.gps_start = data;
-        else prog.gps_end = data;
+        if (which === 'start') prog.gps_start = { lat: lat, lon: lon };
+        else prog.gps_end = { lat: lat, lon: lon };
         saveProgress(key, prog);
-        resultEl.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}（±${acc}m）`;
+        resultEl.textContent = lat.toFixed(6) + ', ' + lon.toFixed(6) + '（±' + acc + 'm）';
         resultEl.className = 'gps-result';
         btnEl.textContent = '再取得';
         btnEl.className = 'gps-btn'; btnEl.disabled = false;
       },
-      err => {
-        resultEl.textContent = 'エラー：' + (err.code === 1 ? '許可が必要です' : err.code === 3 ? 'タイムアウト' : '取得失敗');
+      function(err) {
+        const msg = err.code === 1 ? '許可が必要です' : err.code === 3 ? 'タイムアウト' : '取得失敗';
+        resultEl.textContent = 'エラー：' + msg;
         resultEl.className = 'gps-result error';
         btnEl.className = 'gps-btn'; btnEl.disabled = false;
       },
@@ -948,7 +1217,7 @@ function renderShinkiMode() {
 
   function gpsStatusHtml(which) {
     const data = which === 'start' ? prog.gps_start : prog.gps_end;
-    if (data) return `${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`;
+    if (data) return data.lat.toFixed(6) + ', ' + data.lon.toFixed(6);
     return '未取得';
   }
 
@@ -956,135 +1225,137 @@ function renderShinkiMode() {
     const num = prog.shinki_count || 0;
     const fn = nextFilename();
 
-    // GPSパネルHTML
-    const gpsHtml = `
-      <div style="background:#f8f9fa;border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0;">
-        <div style="font-size:13px;font-weight:bold;color:#1a5c9a;margin-bottom:8px;">📍 GPS位置情報</div>
-        <div class="gps-row" style="margin-bottom:6px;">
-          <button class="gps-btn" id="sh-gps-start-btn" onclick="shinkiGetGPS('start')">${prog.gps_start ? '再取得' : '起点を取得'}</button>
-          <div class="gps-result" id="sh-gps-start-result">${gpsStatusHtml('start')}</div>
-        </div>
-        <div class="gps-row">
-          <button class="gps-btn" id="sh-gps-end-btn" onclick="shinkiGetGPS('end')">${prog.gps_end ? '再取得' : '終点を取得'}</button>
-          <div class="gps-result" id="sh-gps-end-result">${gpsStatusHtml('end')}</div>
-        </div>
-      </div>`;
+    const gpsHtml = '<div style="background:#f8f9fa;border:1px solid #ddd;border-radius:10px;padding:12px;margin:10px 0;">'
+      + '<div style="font-size:13px;font-weight:bold;color:#1a5c9a;margin-bottom:8px;">📍 GPS位置情報</div>'
+      + '<div class="gps-row" style="margin-bottom:6px;">'
+      + '<button class="gps-btn" id="sh-gps-start-btn" data-shinki-gps="start">' + (prog.gps_start ? '再取得' : '起点を取得') + '</button>'
+      + '<div class="gps-result" id="sh-gps-start-result">' + gpsStatusHtml('start') + '</div>'
+      + '</div>'
+      + '<div class="gps-row">'
+      + '<button class="gps-btn" id="sh-gps-end-btn" data-shinki-gps="end">' + (prog.gps_end ? '再取得' : '終点を取得') + '</button>'
+      + '<div class="gps-result" id="sh-gps-end-result">' + gpsStatusHtml('end') + '</div>'
+      + '</div></div>';
 
-    // サムネイルHTML
     let thumbHtml = '';
     if (prog.thumbs.length > 0) {
       thumbHtml = '<div class="thumb-grid">';
-      prog.thumbs.forEach((t, i) => {
-        thumbHtml += `<div class="thumb-item">
-          <img src="${t.dataURL}" loading="lazy">
-          <div class="thumb-label">${t.filename}</div>
-          <button class="thumb-del" onclick="shinkiDelThumb(${i})" title="削除">×</button>
-        </div>`;
+      prog.thumbs.forEach(function(t, i) {
+        thumbHtml += '<div class="thumb-item">'
+          + '<img src="' + t.dataURL + '" loading="lazy">'
+          + '<div class="thumb-label">' + t.filename + '</div>'
+          + '<button class="thumb-del" data-shinki-del="' + i + '" title="削除">×</button>'
+          + '</div>';
       });
       thumbHtml += '</div>';
     }
 
-    // 保存確認バーHTML
     let confirmHtml = '';
     if (pendingDataURL) {
-      confirmHtml = `<div class="save-confirm-bar" id="save-bar">
-        <img src="${pendingDataURL}">
-        <div class="save-confirm-info">
-          <div class="save-confirm-fname">${pendingFilename}</div>
-          <div class="save-confirm-hint">保存してください</div>
-        </div>
-        <div class="save-confirm-btns">
-          <button class="btn-save" onclick="shinkiSave()">💾 保存</button>
-          <button class="btn-retake" onclick="shinkiRetake()">撮り直し</button>
-        </div>
-      </div>`;
+      confirmHtml = '<div class="save-confirm-bar" id="save-bar">'
+        + '<img src="' + pendingDataURL + '">'
+        + '<div class="save-confirm-info">'
+        + '<div class="save-confirm-fname">' + pendingFilename + '</div>'
+        + '<div class="save-confirm-hint">保存してください</div>'
+        + '</div>'
+        + '<div class="save-confirm-btns">'
+        + '<button class="btn-save" data-shinki-save="1">💾 保存</button>'
+        + '<button class="btn-retake" data-shinki-retake="1">撮り直し</button>'
+        + '</div></div>';
     }
 
-    document.getElementById('shoot-body').innerHTML = `
-      <div class="shinki-panel">
-        <div class="shinki-top">
-          <div class="counter-big">${num}</div>
-          <div class="counter-info">
-            <div class="counter-label">撮影済み</div>
-            <div class="counter-next">次：${fn}</div>
-          </div>
-        </div>
-        ${gpsHtml}
-        ${thumbHtml}
-      </div>
-      ${confirmHtml}
-      <button class="shoot-btn-big" onclick="shinkiShoot()" ${pendingDataURL ? 'disabled style="opacity:.5"' : ''}>📷　撮影（${String(num+1).padStart(3,'0')}）</button>
-      <button class="complete-btn" onclick="confirmComplete()">✔ この箇所を完了</button>`;
+    document.getElementById('shoot-body').innerHTML =
+      '<div class="shinki-panel">'
+      + '<div class="shinki-top">'
+      + '<div class="counter-big">' + num + '</div>'
+      + '<div class="counter-info">'
+      + '<div class="counter-label">撮影済み</div>'
+      + '<div class="counter-next">次：' + fn + '</div>'
+      + '</div></div>'
+      + gpsHtml + thumbHtml + '</div>'
+      + confirmHtml
+      + '<button class="shoot-btn-big" data-shinki-shoot="1"' + (pendingDataURL ? ' disabled style="opacity:.5"' : '') + '>📷　撮影（' + String(num + 1).padStart(3, '0') + '）</button>'
+      + '<button class="complete-btn" data-complete="1">✔ この箇所を完了</button>';
   }
 
-  window.shinkiShoot = function() {
-    pendingFilename = nextFilename();
-    openCamera(async function(file) {
-      pendingFile = file;
-      pendingDataURL = await fileToDataURL(file);
+  // イベント委譲
+  document.getElementById('shoot-body').addEventListener('click', function(e) {
+    // GPS
+    const gpsBtn = e.target.closest('[data-shinki-gps]');
+    if (gpsBtn) { window.shinkiGetGPS(gpsBtn.dataset.shinkiGps); return; }
+    // 撮影
+    if (e.target.closest('[data-shinki-shoot]')) {
+      if (pendingDataURL) return;
+      pendingFilename = nextFilename();
+      openCamera(function(file) {
+        pendingFile = file;
+        fileToDataURL(file).then(function(url) { pendingDataURL = url; redraw(); });
+      });
+      return;
+    }
+    // 保存
+    if (e.target.closest('[data-shinki-save]')) {
+      if (!pendingFile) return;
+      savePhoto(pendingFile, pendingFilename);
+      prog.shinki_count = (prog.shinki_count || 0) + 1;
+      prog.thumbs.push({ filename: pendingFilename, dataURL: pendingDataURL });
+      saveProgress(key, prog);
+      showToast('保存：' + pendingFilename);
+      pendingFile = null; pendingDataURL = null; pendingFilename = null;
       redraw();
-    });
-  };
-
-  window.shinkiSave = function() {
-    if (!pendingFile) return;
-    savePhoto(pendingFile, pendingFilename);
-    // サムネイル追加（DataURL保存）
-    prog.shinki_count = (prog.shinki_count || 0) + 1;
-    prog.thumbs.push({ filename: pendingFilename, dataURL: pendingDataURL });
-    saveProgress(key, prog);
-    showToast('保存：' + pendingFilename);
-    pendingFile = null; pendingDataURL = null; pendingFilename = null;
-    redraw();
-  };
-
-  window.shinkiRetake = function() {
-    pendingFile = null; pendingDataURL = null; pendingFilename = null;
-    redraw();
-  };
-
-  window.shinkiDelThumb = function(i) {
-    prog.thumbs.splice(i, 1);
-    prog.shinki_count = prog.thumbs.length;
-    saveProgress(key, prog);
-    redraw();
-  };
+      return;
+    }
+    // 撮り直し
+    if (e.target.closest('[data-shinki-retake]')) {
+      pendingFile = null; pendingDataURL = null; pendingFilename = null;
+      redraw();
+      return;
+    }
+    // サムネイル削除
+    const delBtn = e.target.closest('[data-shinki-del]');
+    if (delBtn) {
+      const i = parseInt(delBtn.dataset.shinkiDel, 10);
+      prog.thumbs.splice(i, 1);
+      prog.shinki_count = prog.thumbs.length;
+      saveProgress(key, prog);
+      redraw();
+      return;
+    }
+    // 完了
+    if (e.target.closest('[data-complete]')) {
+      confirmComplete();
+    }
+  });
 
   redraw();
 }
 
 // ===== 既存モード =====
 function renderKizonMode() {
-  const s = currentSite;
+  const s = currentSite();
   const key = s.no + '_' + s.kanai;
   let prog = loadProgress(key) || { p_done: {}, p_pano: {}, p_thumbs: {} };
   if (!prog.p_done) prog.p_done = {};
   if (!prog.p_pano) prog.p_pano = {};
   if (!prog.p_thumbs) prog.p_thumbs = {};
 
-  // 保存待ち状態（1件のみ）
   let pendingFile = null;
   let pendingDataURL = null;
   let pendingFilename = null;
   let pendingPkey = null;
   let pendingIsPano = false;
 
-  function getP(n) { return `P${n}`; }
-
   function getMaxP() {
     const keys = Object.keys(prog.p_done || {});
     if (keys.length === 0) return 3;
-    const nums = keys.map(k => parseInt(k.replace('P',''))).filter(n => !isNaN(n));
-    return Math.max(...nums, 3);
+    const nums = keys.map(function(k) { return parseInt(k.replace('P', ''), 10); }).filter(function(n) { return !isNaN(n); });
+    return Math.max.apply(null, nums.concat([3]));
   }
 
   function redraw() {
     const maxP = getMaxP();
-
-    // P番号グリッド
     let gridHtml = '<div class="p-grid">';
     for (let i = 1; i <= maxP; i++) {
-      const pkey = getP(i);
+      const pkey = 'P' + i;
       const done = prog.p_done[pkey];
       const hasPano = prog.p_pano[pkey];
       let cls = 'p-card';
@@ -1092,141 +1363,169 @@ function renderKizonMode() {
       else if (done) cls += ' done';
       const thumb = prog.p_thumbs[pkey];
       const thumbHtml = thumb
-        ? `<img class="p-thumb" src="${thumb}" loading="lazy">`
-        : `<div class="p-thumb-empty">📷</div>`;
+        ? '<img class="p-thumb" src="' + thumb + '" loading="lazy">'
+        : '<div class="p-thumb-empty">📷</div>';
       const statusTxt = done ? (hasPano ? 'パノラマ済' : '撮影済') : '未撮影';
-      gridHtml += `<div class="${cls}">
-        <div class="p-card-header" onclick="toggleP(${i})">
-          <div class="p-num">${pkey}</div>
-          <div class="p-status">${statusTxt}</div>
-        </div>
-        ${thumbHtml ? `<div onclick="toggleP(${i})">${thumbHtml}</div>` : `<div onclick="toggleP(${i})">${thumbHtml}</div>`}
-        <button class="p-pano-btn" onclick="addPano(${i})" ${done ? '' : 'style="display:none"'}>＋パノラマ撮影</button>
-      </div>`;
+      gridHtml += '<div class="' + cls + '">'
+        + '<div class="p-card-header" data-toggle-p="' + i + '">'
+        + '<div class="p-num">' + pkey + '</div>'
+        + '<div class="p-status">' + statusTxt + '</div>'
+        + '</div>'
+        + '<div data-toggle-p="' + i + '">' + thumbHtml + '</div>'
+        + '<button class="p-pano-btn" data-pano-p="' + i + '"' + (done ? '' : ' style="display:none"') + '>＋パノラマ撮影</button>'
+        + '</div>';
     }
     gridHtml += '</div>';
 
-    // 保存確認バー
     let confirmHtml = '';
     if (pendingDataURL) {
-      confirmHtml = `<div class="save-confirm-bar">
-        <img src="${pendingDataURL}">
-        <div class="save-confirm-info">
-          <div class="save-confirm-fname">${pendingFilename}</div>
-          <div class="save-confirm-hint">保存してください</div>
-        </div>
-        <div class="save-confirm-btns">
-          <button class="btn-save" onclick="kizonSave()">💾 保存</button>
-          <button class="btn-retake" onclick="kizonRetake()">撮り直し</button>
-        </div>
-      </div>`;
+      confirmHtml = '<div class="save-confirm-bar">'
+        + '<img src="' + pendingDataURL + '">'
+        + '<div class="save-confirm-info">'
+        + '<div class="save-confirm-fname">' + pendingFilename + '</div>'
+        + '<div class="save-confirm-hint">保存してください</div>'
+        + '</div>'
+        + '<div class="save-confirm-btns">'
+        + '<button class="btn-save" data-kizon-save="1">💾 保存</button>'
+        + '<button class="btn-retake" data-kizon-retake="1">撮り直し</button>'
+        + '</div></div>';
     }
 
-    document.getElementById('shoot-body').innerHTML = `
-      <div class="p-section-title">P番号チェック（タップで撮影）</div>
-      ${gridHtml}
-      ${confirmHtml}
-      <button class="add-p-btn" onclick="addPNum()">＋ P番号を追加</button>
-      <button class="complete-btn" onclick="confirmComplete()">✔ この箇所を完了</button>`;
+    document.getElementById('shoot-body').innerHTML =
+      '<div class="p-section-title">P番号チェック（タップで撮影）</div>'
+      + gridHtml + confirmHtml
+      + '<button class="add-p-btn" data-add-p="1">＋ P番号を追加</button>'
+      + '<button class="complete-btn" data-complete="1">✔ この箇所を完了</button>';
   }
 
-  window.toggleP = function(n) {
-    if (pendingDataURL) return; // 保存待ち中は操作しない
-    const pkey = getP(n);
-    if (prog.p_done[pkey]) {
-      // 撮影済み → 取消確認
-      if (!confirm(`${filePrefix(s)}_${pkey} を取り消しますか？`)) return;
-      delete prog.p_done[pkey];
-      delete prog.p_pano[pkey];
-      delete prog.p_thumbs[pkey];
+  // イベント委譲
+  document.getElementById('shoot-body').addEventListener('click', function(e) {
+    // P番号タップ
+    const toggleEl = e.target.closest('[data-toggle-p]');
+    if (toggleEl) {
+      if (pendingDataURL) return;
+      const n = parseInt(toggleEl.dataset.toggleP, 10);
+      const pkey = 'P' + n;
+      if (prog.p_done[pkey]) {
+        // 取消
+        delete prog.p_done[pkey];
+        delete prog.p_pano[pkey];
+        delete prog.p_thumbs[pkey];
+        saveProgress(key, prog);
+        redraw();
+      } else {
+        pendingPkey = pkey;
+        pendingIsPano = false;
+        pendingFilename = filePrefix(s) + '_' + pkey + '.jpg';
+        openCamera(function(file) {
+          pendingFile = file;
+          fileToDataURL(file).then(function(url) { pendingDataURL = url; redraw(); });
+        });
+      }
+      return;
+    }
+    // パノラマ
+    const panoEl = e.target.closest('[data-pano-p]');
+    if (panoEl) {
+      if (pendingDataURL) return;
+      const n = parseInt(panoEl.dataset.panoP, 10);
+      const pkey = 'P' + n;
+      const nextPano = (prog.p_pano[pkey] || 0) + 1;
+      pendingPkey = pkey;
+      pendingIsPano = true;
+      pendingFilename = filePrefix(s) + '_' + pkey + '-pano' + nextPano + '.jpg';
+      openCamera(function(file) {
+        pendingFile = file;
+        fileToDataURL(file).then(function(url) { pendingDataURL = url; redraw(); });
+      });
+      return;
+    }
+    // 保存
+    if (e.target.closest('[data-kizon-save]')) {
+      if (!pendingFile) return;
+      savePhoto(pendingFile, pendingFilename);
+      if (pendingIsPano) {
+        prog.p_pano[pendingPkey] = (prog.p_pano[pendingPkey] || 0) + 1;
+      } else {
+        prog.p_done[pendingPkey] = true;
+        prog.p_thumbs[pendingPkey] = pendingDataURL;
+      }
+      saveProgress(key, prog);
+      showToast('保存：' + pendingFilename);
+      pendingFile = null; pendingDataURL = null; pendingFilename = null;
+      pendingPkey = null; pendingIsPano = false;
+      redraw();
+      return;
+    }
+    // 撮り直し
+    if (e.target.closest('[data-kizon-retake]')) {
+      pendingFile = null; pendingDataURL = null; pendingFilename = null;
+      pendingPkey = null; pendingIsPano = false;
+      redraw();
+      return;
+    }
+    // P追加
+    if (e.target.closest('[data-add-p]')) {
+      const newN = getMaxP() + 1;
+      prog.p_done['P' + newN] = false;
       saveProgress(key, prog);
       redraw();
-    } else {
-      // 未撮影 → カメラ起動
-      pendingPkey = pkey;
-      pendingIsPano = false;
-      pendingFilename = `${filePrefix(s)}_${pkey}.jpg`;
-      openCamera(async function(file) {
-        pendingFile = file;
-        pendingDataURL = await fileToDataURL(file);
-        redraw();
-      });
+      return;
     }
-  };
-
-  window.addPano = function(n) {
-    if (pendingDataURL) return;
-    const pkey = getP(n);
-    const nextPano = (prog.p_pano[pkey] || 0) + 1;
-    pendingPkey = pkey;
-    pendingIsPano = true;
-    pendingFilename = `${filePrefix(s)}_${pkey}-pano${nextPano}.jpg`;
-    openCamera(async function(file) {
-      pendingFile = file;
-      pendingDataURL = await fileToDataURL(file);
-      redraw();
-    });
-  };
-
-  window.kizonSave = function() {
-    if (!pendingFile) return;
-    savePhoto(pendingFile, pendingFilename);
-    if (pendingIsPano) {
-      const nextPano = (prog.p_pano[pendingPkey] || 0) + 1;
-      prog.p_pano[pendingPkey] = nextPano;
-    } else {
-      prog.p_done[pendingPkey] = true;
-      prog.p_thumbs[pendingPkey] = pendingDataURL; // サムネイル保存
+    // 完了
+    if (e.target.closest('[data-complete]')) {
+      confirmComplete();
     }
-    saveProgress(key, prog);
-    showToast('保存：' + pendingFilename);
-    pendingFile = null; pendingDataURL = null; pendingFilename = null;
-    pendingPkey = null; pendingIsPano = false;
-    redraw();
-  };
-
-  window.kizonRetake = function() {
-    pendingFile = null; pendingDataURL = null; pendingFilename = null;
-    pendingPkey = null; pendingIsPano = false;
-    redraw();
-  };
-
-  window.addPNum = function() {
-    const newN = getMaxP() + 1;
-    prog.p_done[getP(newN)] = false;
-    saveProgress(key, prog);
-    redraw();
-  };
+  });
 
   redraw();
 }
 
 // ===== 完了確認 =====
-window.confirmComplete = function() {
-  const s = currentSite;
-  const shots = (function() {
-    const key = s.no + '_' + s.kanai;
-    const prog = loadProgress(key) || {};
-    if (s.type === '新規') return prog.shinki_count || 0;
-    return Object.keys(prog.p_done || {}).filter(k => prog.p_done[k]).length;
-  })();
-  if (confirm(`No.${s.no}　${s.name}\nを完了としますか？\n（撮影済み ${shots}枚）`)) {
-    const key = s.no + '_' + s.kanai;
-    let prog = loadProgress(key) || {};
-    prog.completed = true;
-    prog.completed_date = todayStr();
-    saveProgress(key, prog);
-    goBack();
+function confirmComplete() {
+  const s = currentSite();
+  if (!s) return;
+  const key = s.no + '_' + s.kanai;
+  const prog = loadProgress(key) || {};
+  const shots = s.type === '新規'
+    ? (prog.shinki_count || 0)
+    : Object.keys(prog.p_done || {}).filter(function(k) { return prog.p_done[k]; }).length;
+  // confirm()はSafariでは動くが一応メッセージ確認
+  if (confirm('No.' + s.no + '　' + s.name + '\nを完了としますか？\n（撮影済み ' + shots + '枚）')) {
+    let p2 = loadProgress(key) || {};
+    p2.completed = true;
+    p2.completed_date = todayStr();
+    saveProgress(key, p2);
+    // タブから削除して戻る
+    openSites.splice(currentTabIdx, 1);
+    if (openSites.length === 0) {
+      goBack();
+    } else {
+      currentTabIdx = Math.min(currentTabIdx, openSites.length - 1);
+      renderShootScreen();
+    }
+    renderSiteList(allSites);
+    showToast('完了：' + s.name);
   }
-};
+}
 
 // ===== 箇所追加 =====
-let gpsStart = null; // {lat, lon, kp}
+let gpsStart = null;
 let gpsEnd = null;
 
+document.getElementById('add-site-btn').addEventListener('click', function() { showAddSite(); });
+document.getElementById('history-btn').addEventListener('click', function() { showHistory(); });
+document.getElementById('addsite-close').addEventListener('click', function() {
+  document.getElementById('addsite-modal').style.display = 'none';
+});
+document.getElementById('addsite-modal').addEventListener('click', function(e) {
+  if (e.target === document.getElementById('addsite-modal')) {
+    document.getElementById('addsite-modal').style.display = 'none';
+  }
+});
+
 function showAddSite() {
-  // フォームリセット
-  ['af-name','af-no','af-start-kp','af-end-kp'].forEach(id => {
+  ['af-name', 'af-no', 'af-start-kp', 'af-end-kp'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
   document.getElementById('gps-start-result').textContent = '未取得';
@@ -1238,20 +1537,16 @@ function showAddSite() {
   document.getElementById('addsite-modal').style.display = 'flex';
 }
 
-function hideAddSite(e) {
-  if (e && e.target !== document.getElementById('addsite-modal')) return;
-  document.getElementById('addsite-modal').style.display = 'none';
-}
+document.getElementById('gps-start-btn').addEventListener('click', function() { getGPS('start'); });
+document.getElementById('gps-end-btn').addEventListener('click', function() { getGPS('end'); });
 
-// GPS取得（'start' or 'end'）
 function getGPS(which) {
-  const btnEl = document.querySelector(`#gps-${which}-result`).previousElementSibling;
-  const resultEl = document.getElementById(`gps-${which}-result`);
+  const btnEl = document.getElementById('gps-' + which + '-btn');
+  const resultEl = document.getElementById('gps-' + which + '-result');
   btnEl.textContent = '取得中…';
   btnEl.className = 'gps-btn loading';
   resultEl.className = 'gps-result';
   resultEl.textContent = '位置情報を取得中…';
-
   if (!navigator.geolocation) {
     resultEl.textContent = 'GPS非対応';
     resultEl.className = 'gps-result error';
@@ -1259,23 +1554,20 @@ function getGPS(which) {
     btnEl.className = 'gps-btn';
     return;
   }
-
   navigator.geolocation.getCurrentPosition(
-    pos => {
+    function(pos) {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
       const acc = Math.round(pos.coords.accuracy);
-      // kpは手入力用（緯度経度から自動計算はルート情報が必要なため表示のみ）
-      const data = { lat, lon };
-      if (which === 'start') gpsStart = data;
-      else gpsEnd = data;
-      resultEl.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}（精度±${acc}m）`;
+      if (which === 'start') gpsStart = { lat: lat, lon: lon };
+      else gpsEnd = { lat: lat, lon: lon };
+      resultEl.textContent = lat.toFixed(6) + ', ' + lon.toFixed(6) + '（精度±' + acc + 'm）';
       resultEl.className = 'gps-result';
       btnEl.textContent = '再取得';
       btnEl.className = 'gps-btn';
       updateDistancePreview();
     },
-    err => {
+    function(err) {
       const msgs = { 1: '位置情報の許可が必要です', 2: '位置情報を取得できません', 3: 'タイムアウト' };
       resultEl.textContent = msgs[err.code] || 'エラー';
       resultEl.className = 'gps-result error';
@@ -1286,7 +1578,6 @@ function getGPS(which) {
   );
 }
 
-// kp入力が変わったら区間距離をプレビュー
 document.addEventListener('input', function(e) {
   if (e.target.id === 'af-start-kp' || e.target.id === 'af-end-kp') updateDistancePreview();
 });
@@ -1296,12 +1587,13 @@ function updateDistancePreview() {
   const en = parseFloat(document.getElementById('af-end-kp').value);
   const el = document.getElementById('af-distance-preview');
   if (!isNaN(s) && !isNaN(en) && en > s) {
-    const dist = Math.round((en - s) * 1000);
-    el.textContent = `区間距離：${dist} m`;
+    el.textContent = '区間距離：' + Math.round((en - s) * 1000) + ' m';
   } else {
     el.textContent = '';
   }
 }
+
+document.getElementById('add-submit-btn').addEventListener('click', function() { submitAddSite(); });
 
 function submitAddSite() {
   const name = document.getElementById('af-name').value.trim();
@@ -1310,38 +1602,26 @@ function submitAddSite() {
   const direction = document.getElementById('af-direction').value;
   const startKp = parseFloat(document.getElementById('af-start-kp').value) || null;
   const endKp = parseFloat(document.getElementById('af-end-kp').value) || null;
-
   if (!name || !no) { alert('箇所名とNo.は必須です'); return; }
-  // 重複チェック
-  if (allSites.find(s => s.no === no && s.kanai === kanai)) {
-    alert(`${kanai} に No.${no} はすでに存在します`); return;
+  if (allSites.find(function(s) { return s.no === no && s.kanai === kanai; })) {
+    alert(kanai + ' に No.' + no + ' はすでに存在します'); return;
   }
-
-  const distM = (startKp != null && endKp != null && endKp > startKp)
-    ? Math.round((endKp - startKp) * 1000) : null;
-
+  const distM = (startKp != null && endKp != null && endKp > startKp) ? Math.round((endKp - startKp) * 1000) : null;
   const newSite = {
-    no, name, kanai,
-    type: '新規',
-    direction,
-    start_kp: startKp,
-    end_kp: endKp,
-    distance_m: distM,
-    gps_start: gpsStart || null,
-    gps_end: gpsEnd || null,
-    user_added: true  // 手動追加フラグ
+    no: no, name: name, kanai: kanai, type: '新規', direction: direction,
+    start_kp: startKp, end_kp: endKp, distance_m: distM,
+    gps_start: gpsStart || null, gps_end: gpsEnd || null, user_added: true
   };
-
   allSites.push(newSite);
-  // localStorageに手動追加リストを保存
   saveUserSites();
-  hideAddSite();
+  document.getElementById('addsite-modal').style.display = 'none';
+  renderKanaiFilter();
   renderSiteList(allSites);
-  showToast(`追加：${no} ${name}`);
+  showToast('追加：' + no + ' ' + name);
 }
 
 function saveUserSites() {
-  const added = allSites.filter(s => s.user_added);
+  const added = allSites.filter(function(s) { return s.user_added; });
   try { localStorage.setItem('user_added_sites', JSON.stringify(added)); } catch(e) {}
 }
 
@@ -1355,19 +1635,28 @@ function loadUserSites() {
 // ===== 日付ヘルパー =====
 function todayStr() {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+
 function formatDate(str) {
   if (!str) return '日付不明';
-  const [y, m, d] = str.split('-');
-  return `${y}年${parseInt(m)}月${parseInt(d)}日`;
+  const parts = str.split('-');
+  return parts[0] + '年' + parseInt(parts[1]) + '月' + parseInt(parts[2]) + '日';
 }
 
 // ===== 完了履歴 =====
+document.getElementById('history-close').addEventListener('click', function() {
+  document.getElementById('history-modal').style.display = 'none';
+});
+document.getElementById('history-modal').addEventListener('click', function(e) {
+  if (e.target === document.getElementById('history-modal')) {
+    document.getElementById('history-modal').style.display = 'none';
+  }
+});
+
 function showHistory() {
-  // 全箇所のprogを集めて日付でグループ化
   const byDate = {};
-  allSites.forEach(s => {
+  allSites.forEach(function(s) {
     const key = s.no + '_' + s.kanai;
     const prog = loadProgress(key);
     if (!prog || !prog.completed) return;
@@ -1375,61 +1664,60 @@ function showHistory() {
     if (!byDate[date]) byDate[date] = [];
     const shots = s.type === '新規'
       ? (prog.shinki_count || 0)
-      : Object.keys(prog.p_done || {}).filter(k => prog.p_done[k]).length;
-    byDate[date].push({ s, shots });
+      : Object.keys(prog.p_done || {}).filter(function(k) { return prog.p_done[k]; }).length;
+    byDate[date].push({ s: s, shots: shots });
   });
-
-  const dates = Object.keys(byDate).sort().reverse(); // 新しい順
+  const dates = Object.keys(byDate).sort().reverse();
   let html = '';
   if (dates.length === 0) {
     html = '<div class="hist-empty">完了した箇所はまだありません</div>';
   } else {
-    dates.forEach(date => {
+    dates.forEach(function(date) {
       const items = byDate[date];
-      const totalShots = items.reduce((a, b) => a + b.shots, 0);
-      html += `<div class="hist-day">
-        <span>${formatDate(date)}</span>
-        <span class="hist-count">${items.length}箇所・計${totalShots}枚</span>
-      </div>`;
-      items.forEach(({ s, shots }) => {
+      const totalShots = items.reduce(function(a, b) { return a + b.shots; }, 0);
+      html += '<div class="hist-day"><span>' + formatDate(date) + '</span><span class="hist-count">' + items.length + '箇所・計' + totalShots + '枚</span></div>';
+      items.forEach(function(item) {
+        const s = item.s;
         const noClass = s.type === '新規' ? 'hist-no shinki' : 'hist-no';
-        const encKey = encodeURIComponent(s.no + '_' + s.kanai);
-        html += `<div class="hist-item">
-          <span class="${noClass}">${s.no}</span>
-          <span class="hist-name">${s.name}</span>
-          <span class="hist-shots">📷 ${shots}枚</span>
-          <button class="hist-undo-btn" onclick="undoComplete('${encKey}')">解除</button>
-        </div>`;
+        const encKey = encodeURIComponent(s.no + '|||' + s.kanai);
+        html += '<div class="hist-item">'
+          + '<span class="' + noClass + '">' + s.no + '</span>'
+          + '<span class="hist-name">' + s.name + '</span>'
+          + '<span class="hist-shots">📷 ' + item.shots + '枚</span>'
+          + '<button class="hist-undo-btn" data-undo-key="' + encKey + '">解除</button>'
+          + '</div>';
       });
     });
   }
-
   document.getElementById('history-body').innerHTML = html;
   document.getElementById('history-modal').style.display = 'flex';
 }
 
-function undoComplete(encKey) {
-  const key = decodeURIComponent(encKey);
-  let prog = loadProgress(key);
+document.getElementById('history-body').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-undo-key]');
+  if (!btn) return;
+  const decoded = decodeURIComponent(btn.dataset.undoKey);
+  const parts = decoded.split('|||');
+  const key = parts[0] + '_' + parts[1];
+  const prog = loadProgress(key);
   if (!prog) return;
   delete prog.completed;
   delete prog.completed_date;
   saveProgress(key, prog);
-  showHistory(); // モーダルを再描画
-  renderSiteList(allSites); // 一覧も更新
-}
-
-function hideHistory(e) {
-  if (e && e.target !== document.getElementById('history-modal')) return;
-  document.getElementById('history-modal').style.display = 'none';
-}
+  showHistory();
+  renderSiteList(allSites);
+});
 
 // ===== 戻る =====
-window.goBack = function() {
+document.getElementById('back-btn').addEventListener('click', function() { goBack(); });
+
+function goBack() {
+  openSites = [];
+  currentTabIdx = 0;
   document.getElementById('shoot-screen').style.display = 'none';
   document.getElementById('home-screen').style.display = 'block';
   renderSiteList(allSites);
-};
+}
 
 // ===== トースト =====
 function showToast(msg) {
@@ -1437,7 +1725,7 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2500);
 }
 
 // ===== localStorage =====
