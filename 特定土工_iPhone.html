@@ -895,47 +895,37 @@ function filePrefix(site) {
 }
 
 // ===== カメラ =====
-// iOS Chrome/Safariで連続撮影が2枚で止まる問題を回避する。
-// 毎回フォームごと完全に作り直し、古いものをすべて削除してから新しいものを追加する。
+// iOS Chrome では同じ input 要素を使い回すと2枚目以降が無視される。
+// 毎回 input を DOM から取り除いて新しく作り直す方式で回避する。
 var _cameraCallback = null;
 
 function openCamera(onShot) {
   _cameraCallback = onShot;
 
-  // 古い要素をすべて削除
-  document.querySelectorAll('.camera-form-wrap').forEach(function(el) { el.remove(); });
+  // 既存のカメラ input をすべて削除
+  var old = document.getElementById('camera-input');
+  if (old) old.remove();
 
-  var wrap = document.createElement('div');
-  wrap.className = 'camera-form-wrap';
-  wrap.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;';
-
-  var form = document.createElement('form');
-
+  // 新しい input を作成
   var input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
   input.setAttribute('capture', 'environment');
+  input.id = 'camera-input';
+  input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;';
 
   input.addEventListener('change', function(e) {
     var file = e.target.files && e.target.files[0];
-    // 要素を削除してから処理（次回の邪魔をしないように）
-    setTimeout(function() {
-      document.querySelectorAll('.camera-form-wrap').forEach(function(el) { el.remove(); });
-    }, 500);
     if (!file) return;
     if (_cameraCallback) { _cameraCallback(file); _cameraCallback = null; }
   });
 
-  form.appendChild(input);
-  wrap.appendChild(form);
-  document.body.appendChild(wrap);
+  document.body.appendChild(input);
 
-  // rAFで3フレーム待ってからクリック（iOS Chromeでの安定性向上）
+  // rAFで2フレーム待ってからクリック
   requestAnimationFrame(function() {
     requestAnimationFrame(function() {
-      requestAnimationFrame(function() {
-        input.click();
-      });
+      input.click();
     });
   });
 }
@@ -943,13 +933,14 @@ function openCamera(onShot) {
 // ===== セッション復元（リロード対策） =====
 const SESSION_KEY = 'shoot_session';
 function saveSession() {
+  // sessionStorageを使う：タブ/アプリを閉じると自動消去されるのでタブが蓄積しない
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ openSites: openSites, currentTabIdx: currentTabIdx }));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ openSites: openSites, currentTabIdx: currentTabIdx }));
   } catch(e) {}
 }
 function restoreSession() {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
+    const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return false;
     const s = JSON.parse(raw);
     if (!s.openSites || s.openSites.length === 0) return false;
@@ -1962,7 +1953,7 @@ document.getElementById('back-btn').addEventListener('click', function() { goBac
 function goBack() {
   openSites = [];
   currentTabIdx = 0;
-  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
+  try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {}
   // 固定撮影ボタンを削除
   var sb = document.getElementById('fixed-shoot-btn');
   if (sb) sb.remove();
